@@ -1,0 +1,2379 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AeroFocus - Pomodoro Flight Timer</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet.js -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow: hidden;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* 地図を確実に背面に全画面表示 */
+        #map-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        /* 乱気流時の画面微振動アニメーション */
+        @keyframes cabin-shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1.5px, -1px) rotate(-0.3deg); }
+            20% { transform: translate(-2px, 0px) rotate(0.3deg); }
+            30% { transform: translate(0px, 1px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(0.3deg); }
+            50% { transform: translate(-1px, 1.5px) rotate(-0.3deg); }
+            60% { transform: translate(-1.5px, 0.5px) rotate(0deg); }
+            70% { transform: translate(1px, 0.5px) rotate(-0.3deg); }
+            80% { transform: translate(-1px, -1px) rotate(0.3deg); }
+            90% { transform: translate(1.5px, 1px) rotate(0deg); }
+            100% { transform: translate(1px, -1px) rotate(-0.3deg); }
+        }
+        .turbulence-active {
+            animation: cabin-shake 0.15s infinite;
+        }
+        /* カスタムスクロールバー */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col relative w-full h-screen overflow-hidden">
+
+    <!-- 通常時ヘッダー (搭乗開始後に全画面表示時は隠れる) -->
+    <header id="mainHeader" class="bg-white/95 backdrop-blur border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-sm shrink-0 z-10 transition-all duration-300">
+        <div class="flex items-center space-x-3">
+            <div class="bg-sky-600 text-white p-2 rounded-xl flex items-center justify-center shadow-md shadow-sky-100">
+                <i class="fa-solid fa-plane-departure text-base"></i>
+            </div>
+            <div>
+                <h1 class="text-base font-bold tracking-tight text-slate-900">AeroFocus</h1>
+                <p class="text-[10px] text-slate-500 font-bold">インフライト・ポモドーロ集中システム</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-4">
+            <div class="hidden sm:flex items-center space-x-2 text-[11px] text-slate-500 font-semibold">
+                <span class="bg-sky-50 text-sky-700 px-2.5 py-1 rounded-md border border-sky-100">
+                    <i class="fa-solid fa-history mr-1"></i> 集中時間を極上のフライトへ
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 地図背景領域 -->
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
+
+    <!-- ==========================================
+         プランナーオーバーレイ (搭乗前のフライトプラン作成)
+         ========================================== -->
+    <div id="plannerOverlay" class="absolute inset-0 z-[1000] flex items-center justify-center bg-slate-900/40 backdrop-blur-md transition-all duration-500">
+        <div class="bg-white/95 backdrop-blur p-6 md:p-8 rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full mx-4 flex flex-col gap-4">
+            
+            <div class="text-center">
+                <div class="bg-sky-50 text-sky-600 w-12 h-12 rounded-2xl flex items-center justify-center text-xl mx-auto mb-2.5 shadow-inner">
+                    <i class="fa-solid fa-compass"></i>
+                </div>
+                <h2 class="text-lg font-bold text-slate-900">インフライト・プランを作成</h2>
+                <p class="text-[11px] text-slate-500 font-bold mt-0.5">世界80都市、米軍/自衛隊、外資キャリアやLCCから多彩に提案します</p>
+            </div>
+
+            <div class="h-[1px] bg-slate-200/60"></div>
+
+            <!-- 出発地選択 -->
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1.5">出発空港を選択 (Origin)</label>
+                <select id="originAirport" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer">
+                    <!-- JSで動的生成 -->
+                </select>
+            </div>
+
+            <!-- 飛行時間（ポモドーロ時間）設定 -->
+            <div>
+                <div class="flex justify-between items-center mb-1.5">
+                    <label class="block text-xs font-bold text-slate-500">飛行時間 (ポモドーロ時間)</label>
+                    <span id="flightDurationVal" class="text-sm font-extrabold text-sky-600 font-mono">25 分</span>
+                </div>
+                <input type="range" id="flightDuration" min="10" max="360" step="5" value="25" class="w-full accent-sky-600 cursor-pointer h-2 bg-slate-100 rounded-lg appearance-none">
+                <div class="flex justify-between text-[10px] text-slate-400 font-bold mt-1.5">
+                    <span>10分 (短距離国内)</span>
+                    <span>180分 (アジア近隣)</span>
+                    <span>360分 (欧米・長距離便)</span>
+                </div>
+            </div>
+
+            <!-- 動的航空便マッチングプレビュー -->
+            <div id="routePreviewCard" class="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-center relative overflow-hidden">
+                <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block mb-0.5">Matched Regular Flight</span>
+                <div class="flex items-center justify-center space-x-3 my-1">
+                    <span id="previewOrigin" class="text-base font-extrabold font-mono text-slate-700">---</span>
+                    <i class="fa-solid fa-arrow-right-long text-sky-500 text-xs animate-pulse"></i>
+                    <span id="previewDest" class="text-base font-extrabold font-mono text-slate-700">---</span>
+                </div>
+                <p id="previewRouteDesc" class="text-[10px] text-slate-500 font-semibold">選択時間に合わせて最適な実在便を自動マッチング中...</p>
+                <button id="shuffleBtn" class="absolute right-2 top-2 text-slate-400 hover:text-sky-600 transition-all" title="別のフライトを検索">
+                    <i class="fa-solid fa-rotate text-xs"></i>
+                </button>
+            </div>
+
+            <!-- キャビンエンジン環境音（ホワイトノイズ）設定 -->
+            <div class="bg-slate-50/50 p-2.5 rounded-xl border border-slate-150 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-headphones text-slate-400 text-xs"></i>
+                    <span class="text-xs font-bold text-slate-500">Cabin Ambient Noise (機内音)</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <span id="hudEngineVolVal" class="text-[10px] font-bold text-slate-400">40%</span>
+                    <input type="range" id="hudEngineVolume" min="0" max="100" value="40" class="w-16 accent-sky-600 cursor-pointer h-1 bg-slate-200 rounded-lg appearance-none">
+                </div>
+            </div>
+
+            <button id="boardingBtn" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-sky-100 transition-all flex items-center justify-center space-x-2 text-xs">
+                <i class="fa-solid fa-passport"></i>
+                <span>Boarding (搭乗開始 & 地図表示)</span>
+            </button>
+
+        </div>
+    </div>
+
+    <!-- ==========================================
+         上部ミニオーバーレイ (フライト中のアナウンス & サイン)
+         ========================================== -->
+    <div id="hudHeader" class="absolute top-4 left-4 right-4 z-[9] flex justify-between items-start gap-4 pointer-events-none transition-all duration-500 opacity-0 transform -translate-y-4">
+        <!-- キャプテン・アナウンス -->
+        <div class="bg-white/95 backdrop-blur border border-slate-200/80 px-4 py-2.5 rounded-2xl shadow-md max-w-sm md:max-w-md pointer-events-auto">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-[9px] font-extrabold text-sky-600 tracking-wider flex items-center">
+                    <i class="fa-solid fa-bullhorn mr-1.5 animate-bounce"></i> CAPTAIN'S INFO
+                </span>
+                <span id="hudProgressTag" class="text-[9px] font-mono bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded-full font-bold">Progress: 0.0%</span>
+            </div>
+            <p id="hudAnnouncement" class="text-[10px] text-slate-500 font-semibold leading-relaxed">
+                出発準備が整いました。Takeoffをクリックして、集中フライトに移行してください。
+            </p>
+        </div>
+
+        <!-- 右上: シートベルト着用サイン灯のみ -->
+        <div class="bg-white/95 backdrop-blur border border-slate-200/80 px-3.5 py-2 rounded-2xl shadow-md flex items-center space-x-2 pointer-events-auto shrink-0">
+            <span class="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider">Seatbelt</span>
+            <div id="seatbeltSign" class="w-9 h-5 rounded flex items-center justify-center text-[10px] text-slate-400 bg-slate-700 transition-all duration-300">
+                <i class="fa-solid fa-user-slash"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- 乱気流時警告アナウンス -->
+    <div id="turbulenceAlert" class="hidden absolute top-28 left-1/2 -translate-x-1/2 z-[999] bg-amber-500/95 text-white backdrop-blur border border-amber-400 p-3.5 rounded-2xl shadow-2xl max-w-sm w-[90%] flex items-center space-x-3 pointer-events-none animate-pulse">
+        <i class="fa-solid fa-triangle-exclamation text-xl text-white"></i>
+        <div class="text-xs">
+            <p class="font-extrabold text-white tracking-wide">TURBULENCE ENCOUNTERED / 乱気流を通過中</p>
+            <p class="text-[9px] text-amber-50 font-bold mt-0.5">シートベルトをしっかりとお締めいただき、集中を持続してください。</p>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         下部フライト情報 ＆ コントロール（左右並び・インフライトIFEモニター風UI）
+         ========================================== -->
+    <div id="hudFooter" class="absolute bottom-4 left-4 right-4 z-[9] flex flex-col lg:flex-row gap-4 pointer-events-none transition-all duration-500 translate-y-4 opacity-0">
+        
+        <!-- 【左側ボックス】飛行状況 ＆ 航路計器 (コンパクトサイズ) -->
+        <div class="flex-1 bg-white/95 backdrop-blur border border-slate-200 shadow-xl rounded-2xl p-3.5 flex items-center justify-between gap-4 pointer-events-auto">
+            
+            <!-- 航空会社・便名 -->
+            <div class="flex items-center space-x-2.5 border-r border-slate-150 pr-3.5 shrink-0">
+                <span id="airlineLogo" class="text-[10px] px-2 py-1 bg-slate-800 text-white rounded font-extrabold font-mono tracking-wider shadow">--</span>
+                <div>
+                    <div class="flex items-center space-x-1.5">
+                        <span id="flightNo" class="text-xs font-extrabold text-slate-800 font-mono">----</span>
+                        <span id="aircraftType" class="text-[8px] bg-sky-100 text-sky-800 font-extrabold px-1 py-0.5 rounded">--</span>
+                    </div>
+                    <span id="airlineName" class="text-[9px] text-slate-400 font-bold block mt-0.5 truncate max-w-[90px]">--</span>
+                </div>
+            </div>
+
+            <!-- 路線表示 (オリジン ➔ 目的地) -->
+            <div class="flex items-center space-x-3 flex-1 justify-center px-2">
+                <div class="text-center">
+                    <div id="originIata" class="text-sm font-extrabold text-slate-800 font-mono leading-none">---</div>
+                    <div id="originCity" class="text-[8px] text-slate-400 font-bold mt-0.5 whitespace-nowrap">---</div>
+                </div>
+                
+                <div class="flex-1 flex flex-col items-center max-w-[120px]">
+                    <span id="currentPhaseLabel" class="text-[7px] font-extrabold text-sky-600 uppercase tracking-widest mb-0.5">BOARDING</span>
+                    <div class="w-full h-0.5 bg-slate-200 relative">
+                        <div id="hudMiniProgressBar" class="absolute top-0 left-0 h-full bg-sky-600 w-0 transition-all duration-300"></div>
+                        <i id="statusPlaneIcon" class="fa-solid fa-plane text-sky-600 absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/2 text-[9px] transition-all duration-500"></i>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <div id="destIata" class="text-sm font-extrabold text-slate-800 font-mono leading-none">---</div>
+                    <div id="destCity" class="text-[8px] text-slate-400 font-bold mt-0.5 whitespace-nowrap">---</div>
+                </div>
+            </div>
+
+            <!-- 高度・速度計器 (極小サイズ) -->
+            <div class="flex items-center space-x-2 border-l border-slate-150 pl-3.5 shrink-0">
+                <div class="bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-xl text-center min-w-[65px]">
+                    <span class="text-[7px] text-slate-400 font-extrabold block uppercase tracking-wider">ALTITUDE</span>
+                    <span id="altVal" class="text-[11px] font-extrabold text-slate-800 font-mono">0</span>
+                    <span class="text-[8px] text-slate-400 font-bold">ft</span>
+                </div>
+                <div class="bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-xl text-center min-w-[65px]">
+                    <span class="text-[7px] text-slate-400 font-extrabold block uppercase tracking-wider">SPEED</span>
+                    <span id="speedVal" class="text-[11px] font-extrabold text-slate-800 font-mono">0</span>
+                    <span class="text-[8px] text-slate-400 font-bold">kts</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 【右側ボックス】タイマー ＆ コントロール (コンパクトサイズ) -->
+        <div class="flex-1 bg-white/95 backdrop-blur border border-slate-200 shadow-xl rounded-2xl p-3.5 flex items-center justify-between gap-4 pointer-events-auto">
+            
+            <!-- 残り時間 ＆ ステータス -->
+            <div class="flex items-center space-x-3 flex-1">
+                <div>
+                    <span class="text-[7px] font-extrabold text-slate-400 uppercase tracking-widest block mb-0.5">REMAINING TIME</span>
+                    <div id="timerDisplay" class="font-mono text-xl md:text-2xl font-extrabold tracking-wider text-slate-800 leading-none">
+                        25 分
+                    </div>
+                </div>
+                <div class="h-6 w-[1px] bg-slate-200"></div>
+                <div>
+                    <span class="text-[7px] font-extrabold text-slate-400 uppercase tracking-widest block mb-0.5">FLIGHT STATUS</span>
+                    <span id="currentPhaseText" class="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-150/80 whitespace-nowrap block">
+                        PRE-FLIGHT
+                    </span>
+                </div>
+            </div>
+
+            <!-- 操作ボタン一式 -->
+            <div class="flex items-center gap-1.5 shrink-0">
+                <!-- 一時停止 / 保留 -->
+                <button id="pauseBtn" disabled class="bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 font-extrabold py-2 px-3.5 rounded-xl border border-slate-200 transition-all flex items-center justify-center space-x-1 text-[11px]">
+                    <i class="fa-solid fa-pause"></i>
+                    <span>Hold (待機)</span>
+                </button>
+                <!-- 開始 / 離陸 -->
+                <button id="startBtn" disabled class="bg-sky-600 hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold py-2 px-4.5 rounded-xl shadow-md shadow-sky-100 hover:shadow-lg transition-all flex items-center justify-center space-x-1.5 text-[11px]">
+                    <i class="fa-solid fa-plane-takeoff animate-pulse"></i>
+                    <span>Takeoff (離陸)</span>
+                </button>
+                <!-- 中断 -->
+                <button id="abortBtn" disabled class="bg-rose-50 hover:bg-rose-100 disabled:opacity-50 disabled:cursor-not-allowed text-rose-600 border border-rose-200 font-bold p-2 rounded-xl transition-all flex items-center justify-center text-[11px]" title="フライトを中断">
+                    <i class="fa-solid fa-ban"></i>
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- 画面下部 フライトログ（通常表示時のみ下部にすっきりと配置、全画面・フライト稼働時はhiddenになる） -->
+    <div id="nonFullscreenFooter" class="bg-white border-t border-slate-200 p-4 shrink-0 transition-all duration-300 z-10">
+        <div class="max-w-4xl mx-auto flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-sky-50 text-sky-600 p-1.5 rounded-lg">
+                    <i class="fa-solid fa-book-atlas text-sm"></i>
+                </div>
+                <div>
+                    <h4 class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Flight Logbook</h4>
+                    <p class="text-xs font-bold text-slate-700">集中フライトマイル記録</p>
+                </div>
+            </div>
+            <div id="totalMiles" class="text-xs font-extrabold text-sky-700 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-100">
+                累計実績: 0 マイル
+            </div>
+            <div id="logbookList" class="flex-1 text-[10px] text-slate-500 max-h-[50px] overflow-y-auto space-y-1 bg-slate-50 p-2 rounded-xl border border-slate-100 w-full md:w-auto">
+                <p class="text-center text-slate-400 font-semibold py-0.5">フライトに成功すると、実際の飛行実績マイルが保存されます。</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- お知らせダイアログ -->
+    <div id="customModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[9999] hidden">
+        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xl max-w-sm w-full mx-4 text-center flex flex-col gap-3.5">
+            <div id="modalIcon" class="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center text-lg mx-auto">
+                <i class="fa-solid fa-circle-info"></i>
+            </div>
+            <h3 id="modalTitle" class="text-base font-bold text-slate-900">お知らせ</h3>
+            <p id="modalMessage" class="text-xs text-slate-500 leading-relaxed font-semibold">メッセージ内容</p>
+            <button id="modalCloseBtn" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all text-xs">
+                了解しました
+            </button>
+        </div>
+    </div>
+
+    <!-- スクリプト制御ロジック -->
+    <script>
+        // --- 1. 空港・路線の精密データマトリクス (世界約80都市規模 & 米軍・自衛隊基地) ---
+        const AIRPORTS = {
+            // 日本国内空港 (18空港)
+            HND: { name: "東京羽田 (HND)", lat: 35.5494, lon: 139.7798, city: "東京", country: "日本", code: "HND" },
+            NRT: { name: "東京成田 (NRT)", lat: 35.7767, lon: 140.3864, city: "東京", country: "日本", code: "NRT" },
+            ITM: { name: "大阪伊丹 (ITM)", lat: 34.7855, lon: 135.4382, city: "大阪", country: "日本", code: "ITM" },
+            KIX: { name: "関西国際 (KIX)", lat: 34.4320, lon: 135.2304, city: "大阪", country: "日本", code: "KIX" },
+            FUK: { name: "福岡 (FUK)", lat: 33.5859, lon: 130.4507, city: "福岡", country: "日本", code: "FUK" },
+            CTS: { name: "新千歳 (CTS)", lat: 42.7752, lon: 141.6923, city: "札幌", country: "日本", code: "CTS" },
+            OKA: { name: "那覇 (OKA)", lat: 26.2064, lon: 127.6465, city: "沖縄", country: "日本", code: "OKA" },
+            KIJ: { name: "新潟 (KIJ)", lat: 37.9564, lon: 139.1114, city: "新潟", country: "日本", code: "KIJ" },
+            UKB: { name: "神戸 (UKB)", lat: 34.6328, lon: 135.2239, city: "神戸", country: "日本", code: "UKB" },
+            NGO: { name: "中部国際 (NGO)", lat: 34.8583, lon: 136.8053, city: "名古屋", country: "日本", code: "NGO" },
+            KOJ: { name: "鹿児島 (KOJ)", lat: 31.8033, lon: 130.7194, city: "鹿児島", country: "日本", code: "KOJ" },
+            KMJ: { name: "熊本 (KMJ)", lat: 32.8372, lon: 130.8550, city: "熊本", country: "日本", code: "KMJ" },
+            MYJ: { name: "松山 (MYJ)", lat: 33.8272, lon: 132.6997, city: "松山", country: "日本", code: "MYJ" },
+            NGS: { name: "長崎 (NGS)", lat: 32.9169, lon: 129.9136, city: "長崎", country: "日本", code: "NGS" },
+            SDJ: { name: "仙台 (SDJ)", lat: 38.1397, lon: 140.9147, city: "仙台", country: "日本", code: "SDJ" },
+            HKD: { name: "函館 (HKD)", lat: 41.7700, lon: 140.8219, city: "函館", country: "日本", code: "HKD" },
+            ISG: { name: "石垣 (ISG)", lat: 24.3964, lon: 124.2447, city: "石垣", country: "日本", code: "ISG" },
+            MMY: { name: "宮古 (MMY)", lat: 24.7831, lon: 125.2953, city: "宮古島", country: "日本", code: "MMY" },
+
+            // 航空自衛隊基地 (3基地)
+            RJT: { name: "空自 入間基地 (RJT)", lat: 35.8394, lon: 139.4122, city: "狭山/入間基地", country: "自衛隊", code: "RJT" },
+            NKM: { name: "空自 小牧基地 (NKM)", lat: 35.2550, lon: 136.9244, city: "小牧基地", country: "自衛隊", code: "NKM" },
+            YGJ: { name: "空自 美保基地 (YGJ)", lat: 35.4922, lon: 133.2364, city: "境港/美保基地", country: "自衛隊", code: "YGJ" },
+
+            // 米軍関連飛行場・空母・揚陸艦 (5拠点)
+            RJOI: { name: "米軍 岩国基地 (RJOI)", lat: 34.1439, lon: 132.2361, city: "岩国基地", country: "米軍", code: "RJOI" },
+            RJTA: { name: "米軍 厚木基地 (RJTA)", lat: 35.4547, lon: 139.4500, city: "厚木基地", country: "米軍", code: "RJTA" },
+            ROTM: { name: "米軍 普天間飛行場 (ROTM)", lat: 26.2736, lon: 127.7583, city: "普天間飛行場", country: "米軍", code: "ROTM" },
+            CVN73: { name: "空母ジョージ・ワシントン (CVN-73)", lat: 34.6000, lon: 139.9000, city: "相模湾沖(艦上)", country: "米軍", code: "CVN73" },
+            LHA7: { name: "強襲揚陸艦トリポリ (LHA-7)", lat: 32.8000, lon: 129.2000, city: "佐世保沖(艦上)", country: "米軍", code: "LHA7" },
+
+            // アジア太平洋ルート (27空港)
+            ICN: { name: "ソウル仁川 (ICN)", lat: 37.4602, lon: 126.4407, city: "ソウル", country: "韓国", code: "ICN" },
+            GMP: { name: "ソウル金浦 (GMP)", lat: 37.5583, lon: 126.7906, city: "ソウル", country: "韓国", code: "GMP" },
+            PUS: { name: "釜山 (PUS)", lat: 35.1794, lon: 128.9383, city: "釜山", country: "韓国", code: "PUS" },
+            TPE: { name: "台北桃園 (TPE)", lat: 25.0797, lon: 121.2342, city: "台北", country: "台湾", code: "TPE" },
+            KHH: { name: "高雄 (KHH)", lat: 22.5711, lon: 120.3500, city: "高雄", country: "台湾", code: "KHH" },
+            HKG: { name: "香港 (HKG)", lat: 22.3080, lon: 113.9185, city: "香港", country: "香港", code: "HKG" },
+            PEK: { name: "北京首都 (PEK)", lat: 40.0799, lon: 116.6031, city: "北京", country: "中国", code: "PEK" },
+            PVG: { name: "上海浦東 (PVG)", lat: 31.1443, lon: 121.8083, city: "上海", country: "中国", code: "PVG" },
+            CAN: { name: "広州白雲 (CAN)", lat: 23.3925, lon: 113.2988, city: "広州", country: "中国", code: "CAN" },
+            SZX: { name: "深セン宝安 (SZX)", lat: 22.6394, lon: 113.8108, city: "深セン", country: "中国", code: "SZX" },
+            CTU: { name: "成都天府 (TFU)", lat: 30.3153, lon: 104.4447, city: "成都", country: "中国", code: "TFU" },
+            HRB: { name: "ハルビン太平 (HRB)", lat: 45.6233, lon: 126.2503, city: "ハルビン", country: "中国", code: "HRB" },
+            BKK: { name: "バンコク・スワンナプーム (BKK)", lat: 13.6900, lon: 100.7501, city: "バンコク", country: "タイ", code: "BKK" },
+            HKT: { name: "プーケット (HKT)", lat: 8.1133, lon: 98.3067, city: "プーケット", country: "タイ", code: "HKT" },
+            CNX: { name: "チェンマイ (CNX)", lat: 18.7728, lon: 98.9628, city: "チェンマイ", country: "タイ", code: "CNX" },
+            SIN: { name: "シンガポール・チャンギ (SIN)", lat: 1.3644, lon: 103.9915, city: "シンガポール", country: "シンガポール", code: "SIN" },
+            KUL: { name: "クアラルンプール (KUL)", lat: 2.7456, lon: 101.7072, city: "クアラルンプール", country: "マレーシア", code: "KUL" },
+            PEN: { name: "ペナン (PEN)", lat: 5.2972, lon: 100.2767, city: "ペナン", country: "マレーシア", code: "PEN" },
+            CGK: { name: "ジャカルタ (CGK)", lat: -6.1256, lon: 106.6558, city: "ジャカルタ", country: "インドネシア", code: "CGK" },
+            DPS: { name: "バリ・デンパサール (DPS)", lat: -8.7481, lon: 115.1672, city: "バリ", country: "インドネシア", code: "DPS" },
+            MNL: { name: "マニラ (MNL)", lat: 14.5086, lon: 121.0194, city: "マニラ", country: "フィリピン", code: "MNL" },
+            CEB: { name: "セブ (CEB)", lat: 10.3075, lon: 123.9794, city: "セブ", country: "フィリピン", code: "CEB" },
+            DEL: { name: "デリー (DEL)", lat: 28.5562, lon: 77.1000, city: "デリー", country: "インド", code: "DEL" },
+            SGN: { name: "ホーチミン (SGN)", lat: 10.8188, lon: 106.6519, city: "ホーチミン", country: "ベトナム", code: "SGN" },
+            DAD: { name: "ダナン (DAD)", lat: 16.0439, lon: 108.1994, city: "ダナン", country: "ベトナム", code: "DAD" },
+            SYD: { name: "シドニー (SYD)", lat: -33.9461, lon: 151.1772, city: "シドニー", country: "オーストラリア", code: "SYD" },
+            MEL: { name: "メルボルン (MEL)", lat: -37.6733, lon: 144.8433, city: "メルボルン", country: "オーストラリア", code: "MEL" },
+
+            // ヨーロッパ・中東 (19空港)
+            LHR: { name: "ロンドン・ヒースロー (LHR)", lat: 51.4700, lon: -0.4543, city: "ロンドン", country: "英国", code: "LHR" },
+            LGW: { name: "ロンドン・ガトウィック (LGW)", lat: 51.1481, lon: -0.1903, city: "ロンドン", country: "英国", code: "LGW" },
+            CDG: { name: "パリ・シャルル・ド・ゴール (CDG)", lat: 49.0097, lon: 2.5479, city: "パリ", country: "フランス", code: "CDG" },
+            ORY: { name: "パリ・オルリー (ORY)", lat: 48.7262, lon: 2.3652, city: "パリ", country: "フランス", code: "ORY" },
+            FRA: { name: "フランクフルト (FRA)", lat: 50.0379, lon: 8.5622, city: "フランクフルト", country: "ドイツ", code: "FRA" },
+            MUC: { name: "ミュンヘン (MUC)", lat: 48.3538, lon: 11.7861, city: "ミュンヘン", country: "ドイツ", code: "MUC" },
+            AMS: { name: "アムステルダム (AMS)", lat: 52.3105, lon: 4.7683, city: "アムステルダム", country: "オランダ", code: "AMS" },
+            ZRH: { name: "チューリッヒ (ZRH)", lat: 47.4581, lon: 8.5481, city: "チューリッヒ", country: "スイス", code: "ZRH" },
+            FCO: { name: "ローマ・フィウミチーノ (FCO)", lat: 41.8003, lon: 12.2389, city: "ローマ", country: "イタリア", code: "FCO" },
+            MXP: { name: "ミラノ・マルペンサ (MXP)", lat: 45.6300, lon: 8.7231, city: "ミラノ", country: "イタリア", code: "MXP" },
+            MAD: { name: "マドリード (MAD)", lat: 40.4914, lon: -3.5672, city: "マドリード", country: "スペイン", code: "MAD" },
+            BCN: { name: "バルセロナ (BCN)", lat: 41.2971, lon: 2.0784, city: "バルセロナ", country: "スペイン", code: "BCN" },
+            CPH: { name: "コペンハーゲン (CPH)", lat: 55.6179, lon: 12.6560, city: "コペンハーゲン", country: "デンマーク", code: "CPH" },
+            HEL: { name: "ヘルシンキ (HEL)", lat: 60.3172, lon: 24.9633, city: "ヘルシンキ", country: "フィンランド", code: "HEL" },
+            IST: { name: "イスタンブール (IST)", lat: 41.2750, lon: 28.7519, city: "イスタンブール", country: "トルコ", code: "IST" },
+            DXB: { name: "ドバイ国際 (DXB)", lat: 25.2532, lon: 55.3657, city: "ドバイ", country: "UAE", code: "DXB" },
+            AUH: { name: "アブダビ (AUH)", lat: 24.4331, lon: 54.6511, city: "アブダビ", country: "UAE", code: "AUH" },
+            DOH: { name: "ドーハ・ハマド (DOH)", lat: 25.2731, lon: 51.6081, city: "ドーハ", country: "カタール", code: "DOH" },
+            CAI: { name: "カイロ (CAI)", lat: 30.1219, lon: 31.4056, city: "カイロ", country: "エジプト", code: "CAI" },
+
+            // 北米 (14空港)
+            JFK: { name: "ニューヨークJFK (JFK)", lat: 40.6413, lon: -73.7781, city: "ニューヨーク", country: "米国", code: "JFK" },
+            EWR: { name: "ニューアーク (EWR)", lat: 40.6925, lon: -74.1686, city: "ニューアーク", country: "米国", code: "EWR" },
+            LGA: { name: "ニューヨークLGA (LGA)", lat: 40.7769, lon: -73.8740, city: "ニューヨーク", country: "米国", code: "LGA" },
+            LAX: { name: "ロサンゼルス (LAX)", lat: 33.9416, lon: -118.4085, city: "ロサンゼルス", country: "米国", code: "LAX" },
+            SFO: { name: "サンフランシスコ (SFO)", lat: 37.6213, lon: -122.3790, city: "サンフランシスコ", country: "米国", code: "SFO" },
+            ORD: { name: "シカゴ・オヘア (ORD)", lat: 41.9742, lon: -87.9073, city: "シカゴ", country: "米国", code: "ORD" },
+            DFW: { name: "ダラス (DFW)", lat: 32.8998, lon: -97.0403, city: "ダラス", country: "米国", code: "DFW" },
+            ATL: { name: "アトランタ (ATL)", lat: 33.6407, lon: -84.4277, city: "アトランタ", country: "米国", code: "ATL" },
+            MIA: { name: "マイアミ (MIA)", lat: 25.7959, lon: -80.2872, city: "マイアミ", country: "米国", code: "MIA" },
+            SEA: { name: "シアトル (SEA)", lat: 47.4502, lon: -122.3088, city: "シアトル", country: "米国", code: "SEA" },
+            IAH: { name: "ヒューストン (IAH)", lat: 29.9902, lon: -95.3368, city: "ヒューストン", country: "米国", code: "IAH" },
+            DEN: { name: "デンバー (DEN)", lat: 39.8561, lon: -104.6737, city: "デンバー", country: "米国", code: "DEN" },
+            BOS: { name: "ボストン (BOS)", lat: 42.3656, lon: -71.0096, city: "ボストン", country: "米国", code: "BOS" },
+            YVR: { name: "バンクーバー (YVR)", lat: 49.1967, lon: -123.1815, city: "バンクーバー", country: "カナダ", code: "YVR" }
+        };
+
+        // 時間スロット別・実在路線の動的多角化データベース
+        const FLIGHT_ROUTING_DATABASE = {
+            HND: [
+                { limit: 45, dests: [
+                    { dest: "ITM", realMin: 75, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL115", aircraft: "B787-8" }, { name: "全日本空輸", code: "ANA", flightNum: "NH25", aircraft: "B777-200" }] },
+                    { dest: "NGO", realMin: 60, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH86", aircraft: "B737-800" }] },
+                    { dest: "KIJ", realMin: 60, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1857", aircraft: "Q400" }] }
+                ]},
+                { limit: 120, dests: [
+                    { dest: "FUK", realMin: 110, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL313", aircraft: "A350-900" }, { name: "全日本空輸", code: "ANA", flightNum: "NH243", aircraft: "B787-9" }] },
+                    { dest: "CTS", realMin: 95, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL513", aircraft: "A350-900" }, { name: "全日本空輸", code: "ANA", flightNum: "NH65", aircraft: "B777-300" }] },
+                    { dest: "KOJ", realMin: 105, airlines: [{ name: "スカイマーク", code: "SKY", flightNum: "BC303", aircraft: "B737-800" }] }
+                ]},
+                { limit: 180, dests: [
+                    { dest: "ICN", realMin: 155, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ177", aircraft: "A330-300" }, { name: "大韓航空", code: "KAL", flightNum: "KE2102", aircraft: "A321neo" }] },
+                    { dest: "GMP", realMin: 145, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL91", aircraft: "B787-9" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "SGN", realMin: 360, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL759", aircraft: "B787-9" }] },
+                    { dest: "BKK", realMin: 355, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG683", aircraft: "A350-900" }, { name: "全日本空輸", code: "ANA", flightNum: "NH847", aircraft: "B787-9" }] }
+                ]}
+            ],
+            NRT: [
+                { limit: 90, dests: [
+                    { dest: "CTS", realMin: 95, airlines: [{ name: "ピーチ・アビエーション", code: "APJ", flightNum: "MM563", aircraft: "A320" }, { name: "ジェットスター・ジャパン", code: "JJP", flightNum: "GK111", aircraft: "A321neo" }] },
+                    { dest: "ITM", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH3239", aircraft: "B737-800" }] }
+                ]},
+                { limit: 180, dests: [
+                    { dest: "ICN", realMin: 160, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE704", aircraft: "B777-300ER" }] },
+                    { dest: "TPE", realMin: 215, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR197", aircraft: "B787-10" }] },
+                    { dest: "PUS", realMin: 130, airlines: [{ name: "チェジュ航空", code: "JJA", flightNum: "7C1153", aircraft: "B737-800" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "BKK", realMin: 360, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG643", aircraft: "A350-900" }] },
+                    { dest: "SIN", realMin: 355, airlines: [{ name: "スクート", code: "TGW", flightNum: "TR809", aircraft: "B787-9" }, { name: "ZIPAIR", code: "TZP", flightNum: "ZG53", aircraft: "B787-8" }] },
+                    { dest: "CAN", realMin: 310, airlines: [{ name: "中国南方航空", code: "CSN", flightNum: "CZ386", aircraft: "A350-900" }] }
+                ]}
+            ],
+            ITM: [
+                { limit: 90, dests: [
+                    { dest: "HND", realMin: 70, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL112", aircraft: "B787-8" }, { name: "全日本空輸", code: "ANA", flightNum: "NH18", aircraft: "B777-200" }] },
+                    { dest: "KIJ", realMin: 65, airlines: [{ name: "アイベックスエアラインズ", code: "IBX", flightNum: "FW73", aircraft: "CRJ-700" }, { name: "日本航空", code: "JAL", flightNum: "JL2241", aircraft: "E170" }] }
+                ]},
+                { limit: 180, dests: [
+                    { dest: "CTS", realMin: 110, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH775", aircraft: "B787-8" }] },
+                    { dest: "FUK", realMin: 75, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL2053", aircraft: "E190" }] }
+                ]}
+            ],
+            KIX: [
+                { limit: 120, dests: [
+                    { dest: "HND", realMin: 70, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL224", aircraft: "B787-8" }] },
+                    { dest: "OKA", realMin: 120, airlines: [{ name: "ピーチ", code: "APJ", flightNum: "MM211", aircraft: "A320" }] },
+                    { dest: "CTS", realMin: 115, airlines: [{ name: "ピーチ", code: "APJ", flightNum: "MM103", aircraft: "A320" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "TPE", realMin: 170, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR131", aircraft: "B777-300ER" }] },
+                    { dest: "HKG", realMin: 240, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX503", aircraft: "B777-300" }] },
+                    { dest: "ICN", realMin: 110, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE724", aircraft: "A330-300" }] },
+                    { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ619", aircraft: "B787-10" }] }
+                ]}
+            ],
+            FUK: [
+                { limit: 120, dests: [
+                    { dest: "HND", realMin: 95, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH250", aircraft: "B787-9" }] },
+                    { dest: "ITM", realMin: 75, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL2050", aircraft: "E190" }] },
+                    { dest: "OKA", realMin: 100, airlines: [{ name: "ソラシドエア", code: "SNJ", flightNum: "SNJ81", aircraft: "B737-800" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "TPE", realMin: 155, airlines: [{ name: "スターラックス航空", code: "SLA", flightNum: "JX841", aircraft: "A330neo" }] },
+                    { dest: "ICN", realMin: 85, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ131", aircraft: "A321" }] },
+                    { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ655", aircraft: "B787-10" }] }
+                ]}
+            ],
+            CTS: [
+                { limit: 90, dests: [
+                    { dest: "KIJ", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1858", aircraft: "Q400" }] }
+                ]},
+                { limit: 180, dests: [
+                    { dest: "HND", realMin: 95, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL514", aircraft: "A350-900" }] },
+                    { dest: "NRT", realMin: 95, airlines: [{ name: "スプリング・ジャパン", code: "SJP", flightNum: "IJ832", aircraft: "B737-800" }] }
+                ]}
+            ],
+            OKA: [
+                { limit: 120, dests: [
+                    { dest: "FUK", realMin: 100, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL3606", aircraft: "B737-800" }] },
+                    { dest: "ITM", realMin: 115, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH764", aircraft: "B787-8" }] },
+                    { dest: "NGO", realMin: 120, airlines: [{ name: "スカイマーク", code: "SKY", flightNum: "BC552", aircraft: "B737-800" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "HND", realMin: 140, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL902", aircraft: "A350-900" }] },
+                    { dest: "TPE", realMin: 95, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR113", aircraft: "A321" }] },
+                    { dest: "ICN", realMin: 135, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ171", aircraft: "A321neo" }] }
+                ]}
+            ],
+            KIJ: [
+                { limit: 90, dests: [
+                    { dest: "ITM", realMin: 70, airlines: [{ name: "アイベックス", code: "IBX", flightNum: "FW74", aircraft: "CRJ-700" }] },
+                    { dest: "CTS", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1857", aircraft: "Q400" }] }
+                ]},
+                { limit: 180, dests: [
+                    { dest: "FUK", realMin: 120, airlines: [{ name: "アイベックス", code: "IBX", flightNum: "FW84", aircraft: "CRJ-700" }] },
+                    { dest: "ICN", realMin: 155, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE764", aircraft: "B737-900" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "TPE", realMin: 220, airlines: [{ name: "タイガーエア台湾", code: "TTW", flightNum: "IT229", aircraft: "A320" }] }
+                ]}
+            ],
+            UKB: [
+                { limit: 120, dests: [
+                    { dest: "HND", realMin: 70, airlines: [{ name: "スカイマーク", code: "SKY", flightNum: "BC102", aircraft: "B737-800" }] },
+                    { dest: "CTS", realMin: 110, airlines: [{ name: "スカイマーク", code: "SKY", flightNum: "BC171", aircraft: "B737-800" }] },
+                    { dest: "OKA", realMin: 125, airlines: [{ name: "スカイマーク", code: "SKY", flightNum: "BC591", aircraft: "B737-800" }] }
+                ]}
+            ],
+            NGO: [
+                { limit: 120, dests: [
+                    { dest: "HND", realMin: 60, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH86", aircraft: "B737-800" }] },
+                    { dest: "CTS", realMin: 100, airlines: [{ name: "AIRDO", code: "ADO", flightNum: "ADO127", aircraft: "B737-700" }] },
+                    { dest: "FUK", realMin: 85, airlines: [{ name: "スターフライヤー", code: "SFJ", flightNum: "SFJ31", aircraft: "A320" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "TPE", realMin: 195, airlines: [{ name: "チャイナエアライン", code: "CAL", flightNum: "CI151", aircraft: "A330-300" }] },
+                    { dest: "HKG", realMin: 255, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX531", aircraft: "A350-900" }] },
+                    { dest: "SIN", realMin: 365, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ671", aircraft: "B787-10" }] }
+                ]}
+            ],
+            KOJ: [
+                { limit: 120, dests: [
+                    { dest: "HND", realMin: 100, airlines: [{ name: "ソラシドエア", code: "SNJ", flightNum: "SNJ74", aircraft: "B737-800" }] },
+                    { dest: "ITM", realMin: 75, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL2402", aircraft: "E190" }] },
+                    { dest: "NGO", realMin: 85, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH352", aircraft: "B737-800" }] }
+                ]}
+            ],
+            KMJ: [
+                { limit: 120, dests: [
+                    { dest: "HND", realMin: 100, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL622", aircraft: "B767-300" }] },
+                    { dest: "ITM", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1626", aircraft: "Q400" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "TPE", realMin: 140, airlines: [{ name: "チャイナエアライン", code: "CAL", flightNum: "CI195", aircraft: "A321neo" }] }
+                ]}
+            ],
+            MYJ: [
+                { limit: 120, dests: [
+                    { dest: "HND", realMin: 80, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL432", aircraft: "B737-800" }] },
+                    { dest: "ITM", realMin: 50, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1632", aircraft: "Q400" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "ICN", realMin: 105, airlines: [{ name: "チェジュ航空", code: "JJA", flightNum: "7C1481", aircraft: "B737-800" }] }
+                ]}
+            ],
+            NGS: [
+                { limit: 120, dests: [
+                    { dest: "HND", realMin: 95, airlines: [{ name: "ソラシドエア", code: "SNJ", flightNum: "SNJ32", aircraft: "B737-800" }] },
+                    { dest: "ITM", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1660", aircraft: "Q400" }] }
+                ]}
+            ],
+            SDJ: [
+                { limit: 120, dests: [
+                    { dest: "CTS", realMin: 75, airlines: [{ name: "ピーチ", code: "APJ", flightNum: "MM413", aircraft: "A320" }] },
+                    { dest: "ITM", realMin: 80, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL2202", aircraft: "E170" }] },
+                    { dest: "FUK", realMin: 115, airlines: [{ name: "アイベックス", code: "IBX", flightNum: "FW12", aircraft: "CRJ-700" }] }
+                ]}
+            ],
+            HKD: [
+                { limit: 120, dests: [
+                    { dest: "HND", realMin: 85, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH554", aircraft: "B767-300" }] },
+                    { dest: "ITM", realMin: 100, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH746", aircraft: "B737-800" }] }
+                ]}
+            ],
+            ISG: [
+                { limit: 120, dests: [
+                    { dest: "OKA", realMin: 60, airlines: [{ name: "日本トランスオーシャン", code: "JTA", flightNum: "NU600", aircraft: "B737-800" }] },
+                    { dest: "KIX", realMin: 125, airlines: [{ name: "ピーチ", code: "APJ", flightNum: "MM232", aircraft: "A320" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "HND", realMin: 160, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH92", aircraft: "B787-8" }] }
+                ]}
+            ],
+            MMY: [
+                { limit: 120, dests: [
+                    { dest: "OKA", realMin: 50, airlines: [{ name: "日本トランスオーシャン", code: "JTA", flightNum: "NU556", aircraft: "B737-800" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "HND", realMin: 160, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL932", aircraft: "B737-800" }] }
+                ]}
+            ],
+            ICN: [
+                { limit: 120, dests: [
+                    { dest: "FUK", realMin: 80, airlines: [{ name: "チェジュ航空", code: "JJA", flightNum: "7C1402", aircraft: "B737-800" }] },
+                    { dest: "KIX", realMin: 105, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE723", aircraft: "A330-300" }] },
+                    { dest: "PVG", realMin: 120, airlines: [{ name: "中国東方航空", code: "CES", flightNum: "MU5052", aircraft: "A321" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "NRT", realMin: 145, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ102", aircraft: "A380" }] },
+                    { dest: "TPE", realMin: 165, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR169", aircraft: "B777-300ER" }] },
+                    { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ611", aircraft: "B787-10" }] },
+                    { dest: "HKG", realMin: 230, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX419", aircraft: "A350-900" }] }
+                ]}
+            ],
+            GMP: [
+                { limit: 120, dests: [
+                    { dest: "KIX", realMin: 100, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE2117", aircraft: "B737-900" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "HND", realMin: 125, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL92", aircraft: "B787-9" }] }
+                ]}
+            ],
+            PUS: [
+                { limit: 120, dests: [
+                    { dest: "FUK", realMin: 55, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE2131", aircraft: "B737-900" }] },
+                    { dest: "KIX", realMin: 90, airlines: [{ name: "チェジュ航空", code: "JJA", flightNum: "7C1352", aircraft: "B737-800" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "NRT", realMin: 125, airlines: [{ name: "エアプサン", code: "ABL", flightNum: "BX112", aircraft: "A321" }] },
+                    { dest: "TPE", realMin: 155, airlines: [{ name: "タイガーエア台湾", code: "TTW", flightNum: "IT607", aircraft: "A320" }] }
+                ]}
+            ],
+            TPE: [
+                { limit: 120, dests: [
+                    { dest: "HKG", realMin: 110, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX403", aircraft: "B777-300" }] },
+                    { dest: "OKA", realMin: 90, airlines: [{ name: "ピーチ", code: "APJ", flightNum: "MM922", aircraft: "A320" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "NRT", realMin: 190, airlines: [{ name: "チャインエアライン", code: "CAL", flightNum: "CI100", aircraft: "A350-900" }] },
+                    { dest: "KIX", realMin: 170, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR178", aircraft: "B787-10" }] },
+                    { dest: "SIN", realMin: 285, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ877", aircraft: "B787-10" }] },
+                    { dest: "BKK", realMin: 215, airlines: [{ name: "スターラックス航空", code: "SLA", flightNum: "JX741", aircraft: "A330neo" }] }
+                ]}
+            ],
+            KHH: [
+                { limit: 360, dests: [
+                    { dest: "NRT", realMin: 210, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR108", aircraft: "A321" }] },
+                    { dest: "KIX", realMin: 185, airlines: [{ name: "タイガーエア台湾", code: "TTW", flightNum: "IT284", aircraft: "A320" }] }
+                ]}
+            ],
+            HKG: [
+                { limit: 90, dests: [
+                    { dest: "TPE", realMin: 100, airlines: [{ name: "キャセイパシフィック航空", code: "CPA", flightNum: "CX400", aircraft: "A330" }, { name: "スターラックス航空", code: "SLA", flightNum: "JX206", aircraft: "A330neo" }] }
+                ]},
+                { limit: 180, dests: [
+                    { dest: "PVG", realMin: 165, airlines: [{ name: "上海航空", code: "CSH", flightNum: "FM846", aircraft: "A330" }] },
+                    { dest: "BKK", realMin: 180, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK385", aircraft: "A380-800" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "SIN", realMin: 240, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ861", aircraft: "B777-300ER" }] },
+                    { dest: "NRT", realMin: 270, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL26", aircraft: "B787-9" }, { name: "香港エクスプレス", code: "HKE", flightNum: "UO646", aircraft: "A320neo" }] }
+                ]}
+            ],
+            PEK: [
+                { limit: 120, dests: [
+                    { dest: "PVG", realMin: 130, airlines: [{ name: "中国国際航空", code: "CCA", flightNum: "CA1501", aircraft: "B777-300ER" }] },
+                    { dest: "ICN", realMin: 120, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ334", aircraft: "A321" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "HND", realMin: 210, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL860", aircraft: "B787-9" }] },
+                    { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ805", aircraft: "B777-300ER" }] }
+                ]}
+            ],
+            PVG: [
+                { limit: 120, dests: [
+                    { dest: "PEK", realMin: 135, airlines: [{ name: "中国東方航空", code: "CES", flightNum: "MU5101", aircraft: "A350-900" }] },
+                    { dest: "ICN", realMin: 120, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE894", aircraft: "A330-300" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "NRT", realMin: 175, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH922", aircraft: "B787-9" }] },
+                    { dest: "KIX", realMin: 135, airlines: [{ name: "吉祥航空", code: "DKH", flightNum: "HO1335", aircraft: "A321neo" }] },
+                    { dest: "SIN", realMin: 315, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ833", aircraft: "A380" }] }
+                ]}
+            ],
+            CAN: [
+                { limit: 120, dests: [
+                    { dest: "PVG", realMin: 130, airlines: [{ name: "中国南方航空", code: "CSN", flightNum: "CZ3523", aircraft: "A350-900" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "NRT", realMin: 250, airlines: [{ name: "中国南方航空", code: "CSN", flightNum: "CZ385", aircraft: "A350-900" }] },
+                    { dest: "SIN", realMin: 255, airlines: [{ name: "スクート", code: "TGW", flightNum: "TR101", aircraft: "A320neo" }] }
+                ]}
+            ],
+            SZX: [
+                { limit: 120, dests: [
+                    { dest: "PVG", realMin: 135, airlines: [{ name: "深セン航空", code: "CSZ", flightNum: "ZH9109", aircraft: "A330" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "NRT", realMin: 255, airlines: [{ name: "深セン航空", code: "CSZ", flightNum: "ZH9051", aircraft: "B737-800" }] },
+                    { dest: "SIN", realMin: 240, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ807", aircraft: "B777-300ER" }] }
+                ]}
+            ],
+            CTU: [
+                { limit: 120, dests: [
+                    { dest: "PEK", realMin: 150, airlines: [{ name: "中国国際航空", code: "CCA", flightNum: "CA1406", aircraft: "A330" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "NRT", realMin: 320, airlines: [{ name: "四川航空", code: "CSC", flightNum: "3U3961", aircraft: "A330" }] },
+                    { dest: "SIN", realMin: 290, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ843", aircraft: "B787-10" }] }
+                ]}
+            ],
+            HRB: [
+                { limit: 120, dests: [
+                    { dest: "PEK", realMin: 115, airlines: [{ name: "中国国際航空", code: "CCA", flightNum: "CA1640", aircraft: "B737-800" }] },
+                    { dest: "PVG", realMin: 170, airlines: [{ name: "中国東方航空", code: "CES", flightNum: "MU5614", aircraft: "A321" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "NRT", realMin: 185, airlines: [{ name: "スプリング・ジャパン", code: "SJP", flightNum: "IJ214", aircraft: "B737-800" }, { name: "中国南方航空", code: "CSN", flightNum: "CZ6085", aircraft: "A321" }] },
+                    { dest: "ICN", realMin: 140, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ340", aircraft: "A321" }] }
+                ]}
+            ],
+            BKK: [
+                { limit: 120, dests: [
+                    { dest: "HKT", realMin: 80, airlines: [{ name: "タイ・エアアジア", code: "AIQ", flightNum: "FD3001", aircraft: "A320" }] },
+                    { dest: "CNX", realMin: 75, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG110", aircraft: "B777-200ER" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "NRT", realMin: 360, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG642", aircraft: "A350-900" }] },
+                    { dest: "SIN", realMin: 145, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ705", aircraft: "A350-900" }] },
+                    { dest: "DEL", realMin: 260, airlines: [{ name: "エアインディア", code: "AIC", flightNum: "AI333", aircraft: "A320neo" }] }
+                ]}
+            ],
+            HKT: [
+                { limit: 120, dests: [
+                    { dest: "BKK", realMin: 85, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG202", aircraft: "B777-300ER" }] },
+                    { dest: "SIN", realMin: 110, airlines: [{ name: "ジェットスター・アジア", code: "JSA", flightNum: "3K534", aircraft: "A320" }] }
+                ]}
+            ],
+            CNX: [
+                { limit: 120, dests: [
+                    { dest: "BKK", realMin: 75, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG103", aircraft: "A350-900" }] }
+                ]}
+            ],
+            SIN: [
+                { limit: 90, dests: [
+                    { dest: "KUL", realMin: 60, airlines: [{ name: "マレーシア航空", code: "MAS", flightNum: "MH614", aircraft: "B737-800" }, { name: "エアアジア", code: "AXM", flightNum: "AK702", aircraft: "A320" }] }
+                ]},
+                { limit: 180, dests: [
+                    { dest: "BKK", realMin: 145, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ708", aircraft: "A350-900" }, { name: "ジェットスター・アジア", code: "JSA", flightNum: "3K511", aircraft: "A320" }] },
+                    { dest: "CGK", realMin: 110, airlines: [{ name: "ガルーダ・インドネシア航空", code: "GIA", flightNum: "GA825", aircraft: "B777-300ER" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "HKG", realMin: 245, airlines: [{ name: "キャセイパシフィック航空", code: "CPA", flightNum: "CX736", aircraft: "A350-900" }] },
+                    { dest: "HND", realMin: 360, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH842", aircraft: "B787-9" }] },
+                    { dest: "NRT", realMin: 360, airlines: [{ name: "ZIPAIR", code: "TZP", flightNum: "ZG54", aircraft: "B787-8" }] }
+                ]}
+            ],
+            KUL: [
+                { limit: 120, dests: [
+                    { dest: "SIN", realMin: 60, airlines: [{ name: "マレーシア航空", code: "MAS", flightNum: "MH611", aircraft: "B737-800" }] },
+                    { dest: "PEN", realMin: 55, airlines: [{ name: "エアアジア", code: "AXM", flightNum: "AK6112", aircraft: "A320" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "NRT", realMin: 360, airlines: [{ name: "マレーシア航空", code: "MAS", flightNum: "MH88", aircraft: "A350-900" }] },
+                    { dest: "TPE", realMin: 285, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR228", aircraft: "B777-300ER" }] }
+                ]}
+            ],
+            PEN: [
+                { limit: 120, dests: [
+                    { dest: "KUL", realMin: 55, airlines: [{ name: "マレーシア航空", code: "MAS", flightNum: "MH1145", aircraft: "B737-800" }] },
+                    { dest: "SIN", realMin: 85, airlines: [{ name: "スクート", code: "TGW", flightNum: "TR427", aircraft: "A320" }] }
+                ]}
+            ],
+            CGK: [
+                { limit: 120, dests: [
+                    { dest: "SIN", realMin: 110, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ957", aircraft: "B777-300ER" }] },
+                    { dest: "DPS", realMin: 115, airlines: [{ name: "ガルーダ・インドネシア", code: "GIA", flightNum: "GA404", aircraft: "A330-300" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "NRT", realMin: 360, airlines: [{ name: "ガルーダ・インドネシア", code: "GIA", flightNum: "GA874", aircraft: "B777-300ER" }] },
+                    { dest: "HKG", realMin: 300, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX776", aircraft: "A350-900" }] }
+                ]}
+            ],
+            DPS: [
+                { limit: 120, dests: [
+                    { dest: "CGK", realMin: 115, airlines: [{ name: "ガルーダ・インドネシア", code: "GIA", flightNum: "GA407", aircraft: "B777-300ER" }] },
+                    { dest: "SIN", realMin: 160, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ939", aircraft: "B787-10" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "SYD", realMin: 360, airlines: [{ name: "カンタス航空", code: "QFA", flightNum: "QF44", aircraft: "B737-800" }] }
+                ]}
+            ],
+            MNL: [
+                { limit: 120, dests: [
+                    { dest: "CEB", realMin: 85, airlines: [{ name: "セブパシフィック航空", code: "CEB", flightNum: "5J561", aircraft: "A321neo" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "NRT", realMin: 260, airlines: [{ name: "フィリピン航空", code: "PAL", flightNum: "PR428", aircraft: "B777-300ER" }] },
+                    { dest: "SIN", realMin: 220, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ915", aircraft: "B787-10" }] }
+                ]}
+            ],
+            CEB: [
+                { limit: 120, dests: [
+                    { dest: "MNL", realMin: 85, airlines: [{ name: "フィリピン航空", code: "PAL", flightNum: "PR1842", aircraft: "A321" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "NRT", realMin: 285, airlines: [{ name: "フィリピン航空", code: "PAL", flightNum: "PR434", aircraft: "A321" }] }
+                ]}
+            ],
+            DEL: [
+                { limit: 360, dests: [
+                    { dest: "SIN", realMin: 350, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ403", aircraft: "A350-900" }] },
+                    { dest: "DXB", realMin: 210, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK511", aircraft: "B777-300ER" }] },
+                    { dest: "BKK", realMin: 245, airlines: [{ name: "エアインディア", code: "AIC", flightNum: "AI332", aircraft: "A320" }] }
+                ]}
+            ],
+            SGN: [
+                { limit: 120, dests: [
+                    { dest: "DAD", realMin: 80, airlines: [{ name: "ベトナム航空", code: "HVN", flightNum: "VN120", aircraft: "A321" }] },
+                    { dest: "BKK", realMin: 90, airlines: [{ name: "タイ・ベトジェット", code: "TVJ", flightNum: "VZ971", aircraft: "A320" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "NRT", realMin: 320, airlines: [{ name: "ベトナム航空", code: "HVN", flightNum: "VN300", aircraft: "B787-9" }] },
+                    { dest: "SIN", realMin: 125, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ177", aircraft: "A350-900" }] }
+                ]}
+            ],
+            DAD: [
+                { limit: 120, dests: [
+                    { dest: "SGN", realMin: 80, airlines: [{ name: "ベトナム航空", code: "HVN", flightNum: "VN123", aircraft: "A321" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "NRT", realMin: 300, airlines: [{ name: "ベトナム航空", code: "HVN", flightNum: "VN318", aircraft: "A321" }] }
+                ]}
+            ],
+            SYD: [
+                { limit: 120, dests: [
+                    { dest: "MEL", realMin: 95, airlines: [{ name: "カンタス航空", code: "QFA", flightNum: "QF401", aircraft: "A330-200" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ232", aircraft: "A380" }] },
+                    { dest: "HND", realMin: 360, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH880", aircraft: "B787-9" }] }
+                ]}
+            ],
+            MEL: [
+                { limit: 120, dests: [
+                    { dest: "SYD", realMin: 85, airlines: [{ name: "カンタス航空", code: "QFA", flightNum: "QF422", aircraft: "B737-800" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ238", aircraft: "B777-300ER" }] }
+                ]}
+            ],
+            LHR: [
+                { limit: 90, dests: [
+                    { dest: "CDG", realMin: 70, airlines: [{ name: "エールフランス航空", code: "AFR", flightNum: "AF1681", aircraft: "A321" }, { name: "イージージェット", code: "EZY", flightNum: "U28424", aircraft: "A320" }] },
+                    { dest: "FRA", realMin: 90, airlines: [{ name: "ルフトハンザ航空", code: "DLH", flightNum: "LH901", aircraft: "A321" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "JFK", realMin: 360, airlines: [{ name: "ヴァージン・アトランティック", code: "VIR", flightNum: "VS3", aircraft: "A350-1000" }, { name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA113", aircraft: "B777-300ER" }] },
+                    { dest: "DXB", realMin: 340, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK2", aircraft: "A380-800" }] },
+                    { dest: "HND", realMin: 360, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL44", aircraft: "A350-1000" }, { name: "全日本空輸", code: "ANA", flightNum: "NH212", aircraft: "B777-300ER" }] }
+                ]}
+            ],
+            LGW: [
+                { limit: 120, dests: [
+                    { dest: "CDG", realMin: 70, airlines: [{ name: "イージージェット", code: "EZY", flightNum: "U28424", aircraft: "A320" }] },
+                    { dest: "AMS", realMin: 75, airlines: [{ name: "イージージェット", code: "EZY", flightNum: "U28867", aircraft: "A320" }] }
+                ]}
+            ],
+            CDG: [
+                { limit: 120, dests: [
+                    { dest: "LHR", realMin: 80, airlines: [{ name: "エールフランス航空", code: "AFR", flightNum: "AF1680", aircraft: "A320" }] },
+                    { dest: "FRA", realMin: 75, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH1031", aircraft: "A320neo" }] },
+                    { dest: "AMS", realMin: 75, airlines: [{ name: "エールフランス航空", code: "AFR", flightNum: "AF1240", aircraft: "A321" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "JFK", realMin: 360, airlines: [{ name: "エールフランス航空", code: "AFR", flightNum: "AF006", aircraft: "B777-300ER" }] },
+                    { dest: "DXB", realMin: 360, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK74", aircraft: "A380" }] }
+                ]}
+            ],
+            ORY: [
+                { limit: 120, dests: [
+                    { dest: "MAD", realMin: 120, airlines: [{ name: "イベリア航空", code: "IBE", flightNum: "IB3435", aircraft: "A320neo" }] },
+                    { dest: "FCO", realMin: 115, airlines: [{ name: "イージージェット", code: "EZY", flightNum: "U24251", aircraft: "A320" }] }
+                ]}
+            ],
+            FRA: [
+                { limit: 120, dests: [
+                    { dest: "LHR", realMin: 100, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH902", aircraft: "A321" }] },
+                    { dest: "CDG", realMin: 75, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH1034", aircraft: "A320" }] },
+                    { dest: "ZRH", realMin: 50, airlines: [{ name: "スイス航空", code: "SWR", flightNum: "LX1069", aircraft: "A220" }] },
+                    { dest: "MUC", realMin: 55, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH100", aircraft: "A320" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "JFK", realMin: 360, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH400", aircraft: "B747-8" }] },
+                    { dest: "DXB", realMin: 360, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH630", aircraft: "A330-300" }] }
+                ]}
+            ],
+            MUC: [
+                { limit: 120, dests: [
+                    { dest: "FRA", realMin: 55, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH101", aircraft: "A320" }] },
+                    { dest: "FCO", realMin: 95, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH1842", aircraft: "A320" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "JFK", realMin: 360, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH410", aircraft: "A350-900" }] }
+                ]}
+            ],
+            AMS: [
+                { limit: 120, dests: [
+                    { dest: "LHR", realMin: 75, airlines: [{ name: "KLMオランダ航空", code: "KLM", flightNum: "KL1007", aircraft: "B737-800" }] },
+                    { dest: "CDG", realMin: 75, airlines: [{ name: "KLMオランダ航空", code: "KLM", flightNum: "KL1227", aircraft: "E190" }] },
+                    { dest: "FRA", realMin: 65, airlines: [{ name: "KLMオランダ航空", code: "KLM", flightNum: "KL1765", aircraft: "B737-700" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "JFK", realMin: 360, airlines: [{ name: "KLMオランダ航空", code: "KLM", flightNum: "KL641", aircraft: "B787-10" }] }
+                ]}
+            ],
+            ZRH: [
+                { limit: 120, dests: [
+                    { dest: "LHR", realMin: 105, airlines: [{ name: "スイス航空", code: "SWR", flightNum: "LX318", aircraft: "A321" }] },
+                    { dest: "CDG", realMin: 75, airlines: [{ name: "スイス航空", code: "SWR", flightNum: "LX632", aircraft: "A220" }] }
+                ]}
+            ],
+            FCO: [
+                { limit: 120, dests: [
+                    { dest: "MUC", realMin: 95, airlines: [{ name: "ITAエアウェイズ", code: "ITY", flightNum: "AZ436", aircraft: "A320" }] },
+                    { dest: "CDG", realMin: 125, airlines: [{ name: "エールフランス航空", code: "AFR", flightNum: "AF1305", aircraft: "A321" }] }
+                ]}
+            ],
+            MXP: [
+                { limit: 120, dests: [
+                    { dest: "CDG", realMin: 85, airlines: [{ name: "イージージェット", code: "EZY", flightNum: "U22781", aircraft: "A320" }] },
+                    { dest: "LHR", realMin: 120, airlines: [{ name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA573", aircraft: "A320neo" }] }
+                ]}
+            ],
+            MAD: [
+                { limit: 120, dests: [
+                    { dest: "BCN", realMin: 75, airlines: [{ name: "イベリア航空", code: "IBE", flightNum: "IB3014", aircraft: "A320neo" }] },
+                    { dest: "ORY", realMin: 120, airlines: [{ name: "イベリア航空", code: "IBE", flightNum: "IB3436", aircraft: "A321" }] },
+                    { dest: "LHR", realMin: 145, airlines: [{ name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA461", aircraft: "A320" }] }
+                ]}
+            ],
+            BCN: [
+                { limit: 120, dests: [
+                    { dest: "MAD", realMin: 80, airlines: [{ name: "ブエリング航空", code: "VLG", flightNum: "VY1002", aircraft: "A320" }] },
+                    { dest: "CDG", realMin: 105, airlines: [{ name: "イージージェット", code: "EZY", flightNum: "U22782", aircraft: "A320" }] }
+                ]}
+            ],
+            CPH: [
+                { limit: 120, dests: [
+                    { dest: "AMS", realMin: 85, airlines: [{ name: "スカンジナビア航空", code: "SAS", flightNum: "SK547", aircraft: "A320neo" }] },
+                    { dest: "FRA", realMin: 85, airlines: [{ name: "スカンジナビア航空", code: "SAS", flightNum: "SK639", aircraft: "A320neo" }] }
+                ]}
+            ],
+            HEL: [
+                { limit: 120, dests: [
+                    { dest: "CPH", realMin: 100, airlines: [{ name: "フィンエアー", code: "FIN", flightNum: "AY951", aircraft: "A321" }] }
+                ]}
+            ],
+            IST: [
+                { limit: 120, dests: [
+                    { dest: "FCO", realMin: 160, airlines: [{ name: "ターキッシュエアラインズ", code: "THY", flightNum: "TK1865", aircraft: "A321" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "LHR", realMin: 245, airlines: [{ name: "ターキッシュエアラインズ", code: "THY", flightNum: "TK1985", aircraft: "A330-300" }] },
+                    { dest: "DXB", realMin: 260, airlines: [{ name: "ターキッシュエアラインズ", code: "THY", flightNum: "TK762", aircraft: "A350-900" }] }
+                ]}
+            ],
+            DXB: [
+                { limit: 120, dests: [
+                    { dest: "DOH", realMin: 70, airlines: [{ name: "カタール航空", code: "QTR", flightNum: "QR1003", aircraft: "B777-300ER" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "LHR", realMin: 360, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK1", aircraft: "A380" }] },
+                    { dest: "CDG", realMin: 360, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK73", aircraft: "A380" }] },
+                    { dest: "DEL", realMin: 185, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK510", aircraft: "B777-300ER" }] }
+                ]}
+            ],
+            AUH: [
+                { limit: 120, dests: [
+                    { dest: "DOH", realMin: 70, airlines: [{ name: "エティハド航空", code: "ETD", flightNum: "EY393", aircraft: "A320" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "LHR", realMin: 360, airlines: [{ name: "エティハド航空", code: "ETD", flightNum: "EY19", aircraft: "B787-9" }] },
+                    { dest: "CDG", realMin: 360, airlines: [{ name: "エティハド航空", code: "ETD", flightNum: "EY31", aircraft: "B787-9" }] }
+                ]}
+            ],
+            DOH: [
+                { limit: 120, dests: [
+                    { dest: "DXB", realMin: 70, airlines: [{ name: "カタール航空", code: "QTR", flightNum: "QR1018", aircraft: "B777-300ER" }] },
+                    { dest: "AUH", realMin: 70, airlines: [{ name: "カタール航空", code: "QTR", flightNum: "QR1054", aircraft: "A320" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "LHR", realMin: 360, airlines: [{ name: "カタール航空", code: "QTR", flightNum: "QR7", aircraft: "A380" }] },
+                    { dest: "CDG", realMin: 360, airlines: [{ name: "カタール航空", code: "QTR", flightNum: "QR39", aircraft: "B787-9" }] }
+                ]}
+            ],
+            CAI: [
+                { limit: 120, dests: [
+                    { dest: "DXB", realMin: 210, airlines: [{ name: "エジプト航空", code: "MSR", flightNum: "MS912", aircraft: "B737-800" }] },
+                    { dest: "IST", realMin: 135, airlines: [{ name: "ターキッシュエアラインズ", code: "THY", flightNum: "TK691", aircraft: "A321" }] }
+                ]}
+            ],
+            JFK: [
+                { limit: 90, dests: [
+                    { dest: "BOS", realMin: 70, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2210", aircraft: "E175" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "LAX", realMin: 350, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA3", aircraft: "A321T" }] },
+                    { dest: "LHR", realMin: 360, airlines: [{ name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA112", aircraft: "B777-300ER" }] },
+                    { dest: "HND", realMin: 360, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL5", aircraft: "A350-1000" }] }
+                ]}
+            ],
+            EWR: [
+                { limit: 120, dests: [
+                    { dest: "ORD", realMin: 150, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1205", aircraft: "B737-900" }] },
+                    { dest: "BOS", realMin: 75, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2412", aircraft: "B737-800" }] }
+                ]}
+            ],
+            LGA: [
+                { limit: 120, dests: [
+                    { dest: "ORD", realMin: 155, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA312", aircraft: "B737-800" }] },
+                    { dest: "BOS", realMin: 75, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL5689", aircraft: "E175" }] }
+                ]}
+            ],
+            LAX: [
+                { limit: 90, dests: [
+                    { dest: "SFO", realMin: 85, airlines: [{ name: "アラスカ航空", code: "ASA", flightNum: "AS3315", aircraft: "E175" }, { name: "ユナイテッド航空", code: "UAL", flightNum: "UA2042", aircraft: "B737-900" }] }
+                ]},
+                { limit: 240, dests: [
+                    { dest: "ORD", realMin: 240, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA302", aircraft: "B737-900" }, { name: "サウスウエスト航空", code: "SWA", flightNum: "WN415", aircraft: "B737-700" }] },
+                    { dest: "SEA", realMin: 170, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL1144", aircraft: "A220" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "JFK", realMin: 350, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL301", aircraft: "B767-400ER" }] },
+                    { dest: "HND", realMin: 360, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL61", aircraft: "B787-9" }, { name: "全日本空輸", code: "ANA", flightNum: "NH105", aircraft: "B777-300ER" }] }
+                ]}
+            ],
+            SFO: [
+                { limit: 120, dests: [
+                    { dest: "LAX", realMin: 90, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2045", aircraft: "B737-900" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "JFK", realMin: 345, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA531", aircraft: "B757-200" }] },
+                    { dest: "ORD", realMin: 255, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA431", aircraft: "B777-200" }] },
+                    { dest: "HND", realMin: 360, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH107", aircraft: "B777-300ER" }] }
+                ]}
+            ],
+            ORD: [
+                { limit: 120, dests: [
+                    { dest: "LGA", realMin: 130, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA1201", aircraft: "B737-800" }] },
+                    { dest: "EWR", realMin: 125, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2354", aircraft: "B737-900" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "LAX", realMin: 260, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1214", aircraft: "B737-900" }] },
+                    { dest: "SFO", realMin: 275, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2314", aircraft: "B737-800" }] }
+                ]}
+            ],
+            DFW: [
+                { limit: 120, dests: [
+                    { dest: "ORD", realMin: 145, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2355", aircraft: "B737-800" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "LAX", realMin: 195, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2411", aircraft: "B787-8" }] },
+                    { dest: "JFK", realMin: 210, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA1402", aircraft: "B737-800" }] }
+                ]}
+            ],
+            ATL: [
+                { limit: 120, dests: [
+                    { dest: "MIA", realMin: 115, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL1123", aircraft: "B757-200" }] },
+                    { dest: "ORD", realMin: 120, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL2344", aircraft: "B737-900" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "LAX", realMin: 290, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL324", aircraft: "B767-300ER" }] },
+                    { dest: "JFK", realMin: 145, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL2014", aircraft: "B737-900" }] }
+                ]}
+            ],
+            MIA: [
+                { limit: 120, dests: [
+                    { dest: "ATL", realMin: 115, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2114", aircraft: "B737-800" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "JFK", realMin: 185, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2445", aircraft: "B777-200ER" }] },
+                    { dest: "ORD", realMin: 190, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA1204", aircraft: "B737-800" }] }
+                ]}
+            ],
+            SEA: [
+                { limit: 120, dests: [
+                    { dest: "YVR", realMin: 55, airlines: [{ name: "アラスカ航空", code: "ASA", flightNum: "AS2414", aircraft: "E175" }] },
+                    { dest: "SFO", realMin: 130, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL4104", aircraft: "B737-800" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "LAX", realMin: 165, airlines: [{ name: "アラスカ航空", code: "ASA", flightNum: "AS1120", aircraft: "B737-900" }] },
+                    { dest: "ORD", realMin: 245, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2411", aircraft: "B737-900" }] }
+                ]}
+            ],
+            IAH: [
+                { limit: 120, dests: [
+                    { dest: "DFW", realMin: 70, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA4312", aircraft: "ERJ-145" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "LGA", realMin: 210, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1140", aircraft: "B737-900" }] },
+                    { dest: "LAX", realMin: 215, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2145", aircraft: "B737-900" }] }
+                ]}
+            ],
+            DEN: [
+                { limit: 120, dests: [
+                    { dest: "ORD", realMin: 145, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1102", aircraft: "B737-900" }] },
+                    { dest: "SFO", realMin: 155, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1244", aircraft: "B737-800" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "LAX", realMin: 145, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2310", aircraft: "B737-900" }] },
+                    { dest: "JFK", realMin: 235, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2414", aircraft: "B737-900" }] }
+                ]}
+            ],
+            BOS: [
+                { limit: 120, dests: [
+                    { dest: "JFK", realMin: 75, airlines: [{ name: "ジェットブルー", code: "JBU", flightNum: "B6301", aircraft: "A320" }] },
+                    { dest: "LGA", realMin: 75, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL5678", aircraft: "E175" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "LAX", realMin: 360, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1201", aircraft: "B737-900" }] }
+                ]}
+            ],
+            YVR: [
+                { limit: 120, dests: [
+                    { dest: "SEA", realMin: 55, airlines: [{ name: "エア・カナダ", code: "ACA", flightNum: "AC8091", aircraft: "DH8D" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "LAX", realMin: 180, airlines: [{ name: "エア・カナダ", code: "ACA", flightNum: "AC554", aircraft: "A220-300" }] },
+                    { dest: "JFK", realMin: 315, airlines: [{ name: "ジェットブルー", code: "JBU", flightNum: "B62301", aircraft: "A320" }] }
+                ]}
+            ],
+
+            // 航空自衛隊 連絡連絡便
+            RJT: [
+                { limit: 120, dests: [
+                    { dest: "NKM", realMin: 50, airlines: [{ name: "航空自衛隊", code: "JSF", flightNum: "COSMO 01", aircraft: "C-1" }, { name: "航空自衛隊", code: "JSF", flightNum: "COSMO 11", aircraft: "C-2" }] },
+                    { dest: "YGJ", realMin: 80, airlines: [{ name: "航空自衛隊", code: "JSF", flightNum: "MESSENGER 31", aircraft: "C-2" }] }
+                ]}
+            ],
+            NKM: [
+                { limit: 120, dests: [
+                    { dest: "RJT", realMin: 50, airlines: [{ name: "航空自衛隊", code: "JSF", flightNum: "COSMO 02", aircraft: "C-130H" }] },
+                    { dest: "YGJ", realMin: 65, airlines: [{ name: "航空自衛隊", code: "JSF", flightNum: "COSMO 12", aircraft: "C-2" }] }
+                ]}
+            ],
+            YGJ: [
+                { limit: 120, dests: [
+                    { dest: "RJT", realMin: 80, airlines: [{ name: "航空自衛隊", code: "MESSENGER 32", aircraft: "C-2" }] }
+                ]}
+            ],
+
+            // 米海軍・米海兵隊 艦載機退避フライト (CVN-73 ＆ LHA-7)
+            CVN73: [
+                { limit: 120, dests: [
+                    { dest: "RJTA", realMin: 45, airlines: [
+                        { name: "米海軍第5空母航空団", code: "USN", flightNum: "TALON 11", aircraft: "MH-60R" },
+                        { name: "米海軍第5空母航空団", code: "USN", flightNum: "SABER 21", aircraft: "MH-60S" }
+                    ]}
+                ]},
+                { limit: 360, dests: [
+                    { dest: "RJOI", realMin: 70, airlines: [
+                        { name: "米海軍第5空母航空団", code: "USN", flightNum: "CHIPPY 01", aircraft: "F/A-18" },
+                        { name: "米海軍第5空母航空団", code: "USN", flightNum: "MACE 33", aircraft: "F-35C" },
+                        { name: "米海軍第5空母航空団", code: "USN", flightNum: "OUTLAW 61", aircraft: "EA-18G" },
+                        { name: "米海軍第5空母航空団", code: "USN", flightNum: "LIBERTY 02", aircraft: "E-2D" }
+                    ]}
+                ]}
+            ],
+            LHA7: [
+                { limit: 120, dests: [
+                    { dest: "ROTM", realMin: 90, airlines: [{ name: "米海兵隊第31海兵遠征部隊", code: "USM", flightNum: "DRAGON 01", aircraft: "MV-22" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "RJOI", realMin: 80, airlines: [{ name: "米海兵隊第31海兵遠征部隊", code: "USM", flightNum: "BAT 51", aircraft: "F-35B" }] }
+                ]}
+            ],
+            ROTM: [
+                { limit: 120, dests: [
+                    { dest: "LHA7", realMin: 90, airlines: [{ name: "米海兵隊第31海兵遠征部隊", code: "USM", flightNum: "DRAGON 02", aircraft: "MV-22" }] }
+                ]},
+                { limit: 360, dests: [
+                    { dest: "RJOI", realMin: 100, airlines: [{ name: "米海兵隊", code: "USM", flightNum: "SUMO 91", aircraft: "C-130H" }] }
+                ]}
+            ]
+        };
+
+        // 安全かつ多彩な自動提案ルーティング計算
+        function getOptimalFlightRoute(origin, chosenMinutes) {
+            let routesList = FLIGHT_ROUTING_DATABASE[origin];
+            if (!routesList) {
+                routesList = FLIGHT_ROUTING_DATABASE["HND"];
+            }
+
+            let matchingCategory = routesList[0];
+            for (const route of routesList) {
+                if (chosenMinutes <= route.limit) {
+                    matchingCategory = route;
+                    break;
+                }
+                matchingCategory = route;
+            }
+
+            // 同一空港マッチングを完全に避ける防衛アルゴリズム
+            let availableDests = matchingCategory.dests.filter(d => d.dest !== origin);
+            
+            if (availableDests.length === 0) {
+                const backupList = FLIGHT_ROUTING_DATABASE["HND"];
+                const backupCategory = backupList[backupList.length - 1];
+                availableDests = backupCategory.dests.filter(d => d.dest !== origin);
+            }
+
+            // 目的地をランダム抽出
+            const randomDestObj = availableDests[Math.floor(Math.random() * availableDests.length)];
+            const randomAirline = randomDestObj.airlines[Math.floor(Math.random() * randomDestObj.airlines.length)];
+            
+            return {
+                destCode: randomDestObj.dest,
+                airlineName: randomAirline.name,
+                airlineCode: randomAirline.code,
+                flightNum: randomAirline.flightNum,
+                aircraft: randomAirline.aircraft,
+                realMin: randomDestObj.realMin
+            };
+        }
+
+
+        // --- 2. キャビンオーディオ環境音響システム (Web Audio API) ---
+        let audioCtx = null;
+        let jetNoiseSource = null;
+        let jetNoiseFilter = null;
+        let jetNoiseGain = null;
+        let oscCore1 = null;
+        let oscCore2 = null;
+
+        function initEngineAudio() {
+            if (audioCtx) {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                return;
+            }
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // ブラウン空調ノイズバッファ
+                const bufferSize = audioCtx.sampleRate * 2.5; 
+                const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const channelData = noiseBuffer.getChannelData(0);
+                
+                let lastValue = 0.0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const whiteNoise = Math.random() * 2 - 1;
+                    channelData[i] = (lastValue + (0.02 * whiteNoise)) / 1.02;
+                    lastValue = channelData[i];
+                    channelData[i] *= 3.5; 
+                }
+                
+                const noiseSource = audioCtx.createBufferSource();
+                noiseSource.buffer = noiseBuffer;
+                noiseSource.loop = true;
+                
+                jetNoiseFilter = audioCtx.createBiquadFilter();
+                jetNoiseFilter.type = 'lowpass';
+                jetNoiseFilter.frequency.setValueAtTime(120, audioCtx.currentTime); 
+                jetNoiseFilter.Q.value = 1.0;
+                
+                const noiseGain = audioCtx.createGain();
+                noiseGain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+                
+                noiseSource.connect(jetNoiseFilter);
+                jetNoiseFilter.connect(noiseGain);
+
+                // うねりを発生させるオシレーター
+                oscCore1 = audioCtx.createOscillator();
+                oscCore2 = audioCtx.createOscillator();
+                const oscGain = audioCtx.createGain();
+                
+                oscCore1.type = 'sawtooth';
+                oscCore1.frequency.setValueAtTime(46, audioCtx.currentTime); 
+                
+                oscCore2.type = 'sawtooth';
+                oscCore2.frequency.setValueAtTime(46.6, audioCtx.currentTime); 
+                
+                oscGain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                
+                const oscFilter = audioCtx.createBiquadFilter();
+                oscFilter.type = 'lowpass';
+                oscFilter.frequency.setValueAtTime(55, audioCtx.currentTime); 
+                
+                oscCore1.connect(oscGain);
+                oscCore2.connect(oscGain);
+                oscGain.connect(oscFilter);
+
+                // 出力ミキサー
+                jetNoiseGain = audioCtx.createGain();
+                const sliderVal = document.getElementById('hudEngineVolume') ? document.getElementById('hudEngineVolume').value : 40;
+                const initVol = sliderVal / 100 * 0.55;
+                jetNoiseGain.gain.setValueAtTime(initVol, audioCtx.currentTime);
+                
+                noiseGain.connect(jetNoiseGain);
+                oscFilter.connect(jetNoiseGain);
+                jetNoiseGain.connect(audioCtx.destination);
+                
+                noiseSource.start(0);
+                oscCore1.start(0);
+                oscCore2.start(0);
+                
+                jetNoiseSource = noiseSource;
+                console.log("Audio Engine loaded successfully.");
+            } catch (error) {
+                console.error("Could not construct Web Audio architecture:", error);
+            }
+        }
+
+        // 澄んだ2和音のチャイム
+        function playBeltChimeSound() {
+            if (!audioCtx) initEngineAudio();
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            
+            const nowTime = audioCtx.currentTime;
+            
+            const osc1 = audioCtx.createOscillator();
+            const gain1 = audioCtx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(523.25, nowTime);
+            gain1.gain.setValueAtTime(0.2, nowTime);
+            gain1.gain.exponentialRampToValueAtTime(0.001, nowTime + 2.0);
+            osc1.connect(gain1);
+            gain1.connect(audioCtx.destination);
+            
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(659.25, nowTime + 0.3);
+            gain2.gain.setValueAtTime(0, nowTime);
+            gain2.gain.setValueAtTime(0.18, nowTime + 0.3);
+            gain2.gain.exponentialRampToValueAtTime(0.001, nowTime + 2.3);
+            osc2.connect(gain2);
+            gain2.connect(audioCtx.destination);
+            
+            osc1.start(nowTime);
+            osc1.stop(nowTime + 2.1);
+            osc2.start(nowTime + 0.3);
+            osc2.stop(nowTime + 2.4);
+        }
+
+
+        // --- 3. アプリ状態変数 ---
+        const state = {
+            isPlaying: false,
+            isPaused: false,
+            totalSeconds: 25 * 60,
+            elapsedSeconds: 0,
+            origin: "HND",
+            dest: "ITM",
+            flightInfo: null,
+            timerId: null,
+            routeData: null,
+            
+            isTurbulent: false,
+            turbulenceTimeLeft: 0,
+            
+            totalMiles: 0,
+            
+            // Leaflet
+            map: null,
+            planeMarker: null,
+            plannedPathLine: null,
+            passedPathLine: null,
+            waypointMarkers: []
+        };
+
+
+        // --- 4. 空港特性に応じた超リアル進入経路(アプローチ・STAR・Hold)動的生成システム ---
+        // 緯度経度の基礎大圏航路の補間
+        function calculateGreatCirclePoints(orig, dest, steps = 150) {
+            const points = [];
+            const lat1 = orig.lat * Math.PI / 180;
+            const lon1 = orig.lon * Math.PI / 180;
+            const lat2 = dest.lat * Math.PI / 180;
+            const lon2 = dest.lon * Math.PI / 180;
+
+            const d = 2 * Math.asin(Math.sqrt(
+                Math.pow(Math.sin((lat2 - lat1) / 2), 2) +
+                Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin((lon2 - lon1) / 2), 2)
+            ));
+
+            for (let i = 0; i <= steps; i++) {
+                const f = i / steps;
+                if (d === 0) {
+                    points.push({ lat: orig.lat, lon: orig.lon });
+                    continue;
+                }
+                const A = Math.sin((1 - f) * d) / Math.sin(d);
+                const B = Math.sin(f * d) / Math.sin(d);
+                const x = A * Math.cos(lat1) * Math.cos(lon1) + B * Math.cos(lat2) * Math.cos(lon2);
+                const y = A * Math.cos(lat1) * Math.sin(lon1) + B * Math.cos(lat2) * Math.sin(lon2);
+                const z = A * Math.sin(lat1) + B * Math.sin(lat2);
+                
+                const lat = Math.atan2(z, Math.sqrt(x * x + y * y)) * 180 / Math.PI;
+                const lon = Math.atan2(y, x) * 180 / Math.PI;
+                points.push({ lat, lon });
+            }
+            return points;
+        }
+
+        // 空港ごとに進入特徴プロファイルを定義
+        const ARRIVAL_PROFILES = {
+            HND: { pattern: "boso_left_turn" },
+            LHR: { pattern: "holding_stack" },
+            JFK: { pattern: "canarsie_curve" },
+            SIN: { pattern: "downwind_u_turn" },
+            ITM: { pattern: "yodogawa_straight" }
+        };
+
+        // アプローチ（75%〜100%ステップ）を空港固有アルゴリズムで統合構築
+        function buildRealisticStarRoute(orig, dest) {
+            const totalSteps = 1000;
+            const cruiseEndIndex = 750; 
+            const rawCircle = calculateGreatCirclePoints(orig, dest, totalSteps);
+            const approachStart = rawCircle[cruiseEndIndex];
+
+            // 75%までは美しい大圏航路をそのまま適用
+            const combined = rawCircle.slice(0, cruiseEndIndex + 1);
+
+            const dLat = dest.lat - approachStart.lat;
+            const dLon = dest.lon - approachStart.lon;
+            const distance = Math.sqrt(dLat * dLat + dLon * dLon);
+
+            const safeDistance = distance === 0 ? 0.0001 : distance;
+
+            const uLat = dLat / safeDistance;
+            const uLon = dLon / safeDistance;
+            const vLat = uLon;
+            const vLon = -uLat;
+
+            const profile = ARRIVAL_PROFILES[dest.code] || ARRIVAL_PROFILES[state.dest] || { pattern: "random_star" };
+            const pattern = profile.pattern;
+
+            let starWps = [];
+
+            if (pattern === "holding_stack") {
+                starWps = [
+                    { percent: 750, u: 0.0, v: 0.0, label: "STAR" },
+                    { percent: 810, u: 0.25, v: 0.12, label: "OCKHAM (HOLD)" }
+                ];
+
+                const holdStartIdx = 810;
+                const holdEndIdx = 880;
+                const holdSteps = holdEndIdx - holdStartIdx;
+                for (let i = 1; i <= holdSteps; i++) {
+                    const ratio = i / holdSteps;
+                    const angle = ratio * Math.PI * 2;
+                    const uOffset = 0.25 + 0.08 * Math.sin(angle);
+                    const vOffset = 0.12 + 0.06 * Math.cos(angle);
+                    
+                    const lat = approachStart.lat + uOffset * dLat + vOffset * safeDistance * vLat;
+                    const lon = approachStart.lon + uOffset * dLon + vOffset * safeDistance * vLon;
+                    combined.push({ lat, lon });
+                }
+
+                starWps.push(
+                    { percent: 880, u: 0.31, v: 0.08, label: "FINAL_APP" },
+                    { percent: 940, u: 0.75, v: -0.02, label: "DECEL" },
+                    { percent: 980, u: 0.99, v: 0.0, label: "TOUCH" },
+                    { percent: 1000, u: 1.0, v: 0.0, label: "GATE" }
+                );
+
+                const remainingWps = [
+                    { percent: 880, u: 0.31, v: 0.08 },
+                    { percent: 940, u: 0.75, v: -0.02 },
+                    { percent: 980, u: 0.99, v: 0.0 },
+                    { percent: 1000, u: 1.0, v: 0.0 }
+                ];
+                for (let k = 1; k < remainingWps.length; k++) {
+                    const prev = remainingWps[k-1];
+                    const curr = remainingWps[k];
+                    const segSteps = curr.percent - prev.percent;
+                    for (let i = 1; i <= segSteps; i++) {
+                        const t = i / segSteps;
+                        const u = prev.u + (curr.u - prev.u) * t;
+                        const v = prev.v + (curr.v - prev.v) * t;
+                        const lat = approachStart.lat + u * dLat + v * safeDistance * vLat;
+                        const lon = approachStart.lon + u * dLon + v * safeDistance * vLon;
+                        combined.push({ lat, lon });
+                    }
+                }
+
+            } else if (pattern === "boso_left_turn") {
+                starWps = [
+                    { percent: 750, u: 0.0, v: 0.0, label: "STAR" },
+                    { percent: 820, u: 0.4, v: 0.25, label: "BOSO" },     
+                    { percent: 890, u: 0.75, v: 0.08, label: "KAIHO" },   
+                    { percent: 950, u: 0.93, v: 0.02, label: "ILS_GP" },  
+                    { percent: 980, u: 0.99, v: 0.0, label: "TOUCH" },
+                    { percent: 1000, u: 1.0, v: 0.0, label: "GATE" }
+                ];
+
+            } else if (pattern === "canarsie_curve") {
+                starWps = [
+                    { percent: 750, u: 0.0, v: 0.0, label: "STAR" },
+                    { percent: 840, u: 0.5, v: -0.12, label: "ASWAY" },   
+                    { percent: 920, u: 0.85, v: -0.08, label: "CRIUX" },  
+                    { percent: 965, u: 0.97, v: 0.01, label: "FINAL" },   
+                    { percent: 980, u: 0.99, v: 0.0, label: "TOUCH" },
+                    { percent: 1000, u: 1.0, v: 0.0, label: "GATE" }
+                ];
+
+            } else if (pattern === "downwind_u_turn") {
+                starWps = [
+                    { percent: 750, u: 0.0, v: 0.0, label: "STAR" },
+                    { percent: 810, u: 0.4, v: 0.22, label: "DWIND" },    
+                    { percent: 880, u: 0.85, v: 0.20, label: "BASE" },    
+                    { percent: 945, u: 0.94, v: 0.03, label: "FACING" },  
+                    { percent: 980, u: 0.99, v: 0.0, label: "TOUCH" },
+                    { percent: 1000, u: 1.0, v: 0.0, label: "GATE" }
+                ];
+
+            } else if (pattern === "yodogawa_straight") {
+                starWps = [
+                    { percent: 750, u: 0.0, v: 0.0, label: "STAR" },
+                    { percent: 830, u: 0.45, v: -0.15, label: "IKOMA" },  
+                    { percent: 910, u: 0.8, v: -0.05, label: "YODO" },    
+                    { percent: 960, u: 0.94, v: 0.0, label: "FINAL" },
+                    { percent: 980, u: 0.99, v: 0.0, label: "TOUCH" },
+                    { percent: 1000, u: 1.0, v: 0.0, label: "GATE" }
+                ];
+
+            } else {
+                const randSide = Math.random() < 0.5 ? 1 : -1;
+                const randOffset1 = (0.12 + Math.random() * 0.15) * randSide;
+                const randOffset2 = (0.08 + Math.random() * 0.10) * -randSide; 
+                
+                starWps = [
+                    { percent: 750, u: 0.0, v: 0.0, label: "STAR" },
+                    { percent: 820, u: 0.35, v: randOffset1, label: "WP1_APP" },
+                    { percent: 890, u: 0.7, v: randOffset2, label: "WP2_APP" },
+                    { percent: 950, u: 0.92, v: 0.02, label: "FINAL" },
+                    { percent: 980, u: 0.99, v: 0.0, label: "TOUCH" },
+                    { percent: 1000, u: 1.0, v: 0.0, label: "GATE" }
+                ];
+            }
+
+            if (pattern !== "holding_stack") {
+                for (let k = 1; k < starWps.length; k++) {
+                    const prevWp = starWps[k-1];
+                    const currentWp = starWps[k];
+                    const segSteps = currentWp.percent - prevWp.percent;
+
+                    for (let i = 1; i <= segSteps; i++) {
+                        const t = i / segSteps;
+                        const u = prevWp.u + (currentWp.u - prevWp.u) * t;
+                        const v = prevWp.v + (currentWp.v - prevWp.v) * t;
+
+                        const lat = approachStart.lat + u * dLat + v * safeDistance * vLat;
+                        const lon = approachStart.lon + u * dLon + v * safeDistance * vLon;
+                        combined.push({ lat, lon });
+                    }
+                }
+            }
+
+            return {
+                points: combined,
+                waypoints: starWps.map(wp => {
+                    const lat = approachStart.lat + wp.u * dLat + wp.v * safeDistance * vLat;
+                    const lon = approachStart.lon + wp.u * dLon + wp.v * safeDistance * vLon;
+                    return { lat, lon, label: wp.label };
+                })
+            };
+        }
+
+
+        // --- 5. UI要素の変数宣言 (window.onload 内で確実にバインドします) ---
+        let originSelect, flightDurationInput, flightDurationVal, boardingBtn, plannerOverlay, shuffleBtn;
+        let previewOrigin, previewDest, previewRouteDesc;
+        let hudHeader, hudFooter, hudAnnouncement, hudProgressTag, seatbeltSign, turbulenceAlert;
+        let flightNoText, aircraftTypeText, airlineNameText, originIataText, originCityText, destIataText, destCityText, airlineLogo, statusPlaneIcon, hudMiniProgressBar;
+        let timerDisplay, currentPhaseText, currentPhaseLabel;
+        let startBtn, pauseBtn, abortBtn;
+        let logbookList, totalMilesText, nonFullscreenFooter;
+        let customModal, modalTitle, modalMessage, modalIcon, modalCloseBtn;
+
+        // --- 6. アプリケーション初期化 ---
+        function initApp() {
+            // DOM要素をページの完全読み込み完了後に確実にバインド
+            originSelect = document.getElementById('originAirport');
+            flightDurationInput = document.getElementById('flightDuration');
+            flightDurationVal = document.getElementById('flightDurationVal');
+            boardingBtn = document.getElementById('boardingBtn');
+            plannerOverlay = document.getElementById('plannerOverlay');
+            shuffleBtn = document.getElementById('shuffleBtn');
+
+            previewOrigin = document.getElementById('previewOrigin');
+            previewDest = document.getElementById('previewDest');
+            previewRouteDesc = document.getElementById('previewRouteDesc');
+
+            hudHeader = document.getElementById('hudHeader');
+            hudFooter = document.getElementById('hudFooter');
+            hudAnnouncement = document.getElementById('hudAnnouncement');
+            hudProgressTag = document.getElementById('hudProgressTag');
+            seatbeltSign = document.getElementById('seatbeltSign');
+            turbulenceAlert = document.getElementById('turbulenceAlert');
+
+            flightNoText = document.getElementById('flightNo');
+            aircraftTypeText = document.getElementById('aircraftType');
+            airlineNameText = document.getElementById('airlineName');
+            originIataText = document.getElementById('originIata');
+            originCityText = document.getElementById('originCity');
+            destIataText = document.getElementById('destIata');
+            destCityText = document.getElementById('destCity');
+            airlineLogo = document.getElementById('airlineLogo');
+            statusPlaneIcon = document.getElementById('statusPlaneIcon');
+            hudMiniProgressBar = document.getElementById('hudMiniProgressBar');
+
+            timerDisplay = document.getElementById('timerDisplay');
+            currentPhaseText = document.getElementById('currentPhaseText');
+            currentPhaseLabel = document.getElementById('currentPhaseLabel'); 
+
+            startBtn = document.getElementById('startBtn');
+            pauseBtn = document.getElementById('pauseBtn');
+            abortBtn = document.getElementById('abortBtn');
+
+            logbookList = document.getElementById('logbookList');
+            totalMilesText = document.getElementById('totalMiles');
+            nonFullscreenFooter = document.getElementById('nonFullscreenFooter');
+
+            customModal = document.getElementById('customModal');
+            modalTitle = document.getElementById('modalTitle');
+            modalMessage = document.getElementById('modalMessage');
+            modalIcon = document.getElementById('modalIcon');
+            modalCloseBtn = document.getElementById('modalCloseBtn');
+
+            // 出発空港のプルダウン構築
+            let selectHtml = '';
+            for (const [code, info] of Object.entries(AIRPORTS)) {
+                selectHtml += `<option value="${code}" ${code === 'HND' ? 'selected' : ''}>${info.name}</option>`;
+            }
+            if (originSelect) originSelect.innerHTML = selectHtml;
+
+            // 地図の定義 (背景全体)
+            state.map = L.map('map', {
+                center: [30.0, 120.0],
+                zoom: 4,
+                zoomControl: false, 
+                attributionControl: false
+            });
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                maxZoom: 18
+            }).addTo(state.map);
+
+            setTimeout(() => {
+                if (state.map) state.map.invalidateSize();
+            }, 300);
+
+            // ローカルストレージ復元
+            const savedMiles = localStorage.getItem('aerofocus_v3_miles');
+            if (savedMiles && totalMilesText) {
+                state.totalMiles = parseInt(savedMiles, 10);
+                totalMilesText.innerText = `累計実績: ${state.totalMiles} マイル`;
+            }
+            updateLogbookListUI();
+
+            // イベント登録
+            if (originSelect) originSelect.addEventListener('change', updatePlannerPreviewInfo);
+            if (flightDurationInput) {
+                flightDurationInput.addEventListener('input', (e) => {
+                    if (flightDurationVal) flightDurationVal.innerText = `${e.target.value} 分`;
+                    updatePlannerPreviewInfo();
+                });
+            }
+
+            if (shuffleBtn) {
+                shuffleBtn.addEventListener('click', () => {
+                    updatePlannerPreviewInfo();
+                    playBeltChimeSound();
+                });
+            }
+
+            if (boardingBtn) boardingBtn.addEventListener('click', onBoardingProcess);
+            if (startBtn) startBtn.addEventListener('click', startFocusFlight);
+            if (pauseBtn) pauseBtn.addEventListener('click', pauseFocusFlight);
+            if (abortBtn) abortBtn.addEventListener('click', confirmAbortFocusFlight);
+
+            if (modalCloseBtn) {
+                modalCloseBtn.addEventListener('click', () => {
+                    if (customModal) customModal.classList.add('hidden');
+                });
+            }
+
+            const envVolSlider = document.getElementById('hudEngineVolume');
+            if (envVolSlider) {
+                envVolSlider.addEventListener('input', (e) => {
+                    const vol = e.target.value;
+                    const volValSpan = document.getElementById('hudEngineVolVal');
+                    if (volValSpan) volValSpan.innerText = `${vol}%`;
+                    if (jetNoiseGain && audioCtx) {
+                        jetNoiseGain.gain.setValueAtTime((vol / 100) * 0.4, audioCtx.currentTime);
+                    }
+                });
+            }
+
+            window.addEventListener('resize', () => {
+                if (state.map) state.map.invalidateSize();
+            });
+
+            updatePlannerPreviewInfo();
+        }
+
+        // 時間と場所に合わせて最適なリアルフライトプレビュー
+        function updatePlannerPreviewInfo() {
+            if (!originSelect) return;
+            const origin = originSelect.value;
+            const minutes = parseInt(flightDurationInput.value, 10);
+            
+            const matchedRoute = getOptimalFlightRoute(origin, minutes);
+            state.flightInfo = matchedRoute; 
+            state.dest = matchedRoute.destCode;
+
+            if (previewOrigin) previewOrigin.innerText = origin;
+            if (previewDest) previewDest.innerText = matchedRoute.destCode;
+            if (previewRouteDesc) {
+                previewRouteDesc.innerText = `フライト: ${matchedRoute.airlineName} ${matchedRoute.flightNum} | 機種: ${matchedRoute.aircraft} | 時間: ${matchedRoute.realMin}分`;
+            }
+        }
+
+        function onBoardingProcess() {
+            initEngineAudio();
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            // 【完全同期設計】搭乗手続きが開始された瞬間にデータを確実に一貫させ、undefined例外を根絶
+            const chosenOrigin = originSelect ? originSelect.value : "HND";
+            const chosenMinutes = flightDurationInput ? parseInt(flightDurationInput.value, 10) : 25;
+            
+            state.origin = chosenOrigin;
+            state.totalSeconds = chosenMinutes * 60;
+            state.elapsedSeconds = 0;
+
+            if (!state.flightInfo || state.origin !== chosenOrigin) {
+    state.flightInfo = getOptimalFlightRoute(chosenOrigin, chosenMinutes);
+}
+
+            state.dest = state.flightInfo.destCode;
+
+            if (plannerOverlay) plannerOverlay.classList.add('hidden');
+            if (nonFullscreenFooter) nonFullscreenFooter.classList.add('hidden');
+
+            if (hudHeader) hudHeader.classList.remove('opacity-0', '-translate-y-4');
+            if (hudFooter) hudFooter.classList.remove('opacity-0', 'translate-y-4');
+            if (hudHeader) hudHeader.classList.add('opacity-100', 'translate-y-0');
+            if (hudFooter) hudFooter.classList.add('opacity-100', 'translate-y-0');
+
+            if (flightNoText) flightNoText.innerText = state.flightInfo.flightNum;
+            if (aircraftTypeText) aircraftTypeText.innerText = state.flightInfo.aircraft;
+            if (airlineNameText) airlineNameText.innerText = state.flightInfo.airlineName;
+            if (airlineLogo) airlineLogo.innerText = state.flightInfo.airlineCode;
+
+            const origAp = AIRPORTS[state.origin];
+            const destAp = AIRPORTS[state.dest];
+            if (originIataText) originIataText.innerText = state.origin;
+            if (originCityText) originCityText.innerText = `${origAp.city} (${origAp.country})`;
+            if (destIataText) destIataText.innerText = state.dest;
+            if (destCityText) destCityText.innerText = `${destAp.city} (${destAp.country})`;
+
+            // 艦載機（空母・揚陸艦）からの発艦判定
+            const isCarrierLaunch = state.origin === 'CVN73' || state.origin === 'LHA7';
+
+            if (startBtn) {
+                if (isCarrierLaunch) {
+                    startBtn.innerHTML = '<i class="fa-solid fa-plane-takeoff animate-pulse"></i><span>Takeoff (発艦)</span>';
+                } else {
+                    startBtn.innerHTML = '<i class="fa-solid fa-plane-takeoff animate-pulse"></i><span>Takeoff (離陸)</span>';
+                }
+            }
+
+            setSeatbeltSignStatus(true);
+
+            state.routeData = buildRealisticStarRoute(origAp, destAp);
+            renderRouteOnLeaflet();
+
+            setTimeout(() => {
+                if (state.map) {
+                    state.map.invalidateSize();
+                    if (state.plannedPathLine) {
+                        state.map.fitBounds(state.plannedPathLine.getBounds(), { padding: [60, 60] });
+                    }
+                }
+            }, 300);
+
+            // コントロールボタンのロック解除
+            if (startBtn) startBtn.disabled = false;
+            if (pauseBtn) pauseBtn.disabled = true;
+            if (abortBtn) abortBtn.disabled = false;
+
+            updateTimerDisplayText();
+
+            if (currentPhaseText) currentPhaseText.innerText = "PRE-FLIGHT / 搭乗中";
+            if (currentPhaseLabel) currentPhaseLabel.innerText = "BOARDING";
+            if (statusPlaneIcon) statusPlaneIcon.style.left = "0%";
+            if (hudMiniProgressBar) hudMiniProgressBar.style.width = "0%";
+            if (hudProgressTag) hudProgressTag.innerText = "Progress: 0.0%";
+
+            if (hudAnnouncement) {
+                if (isCarrierLaunch) {
+                    hudAnnouncement.innerText = `搭乗員各位、${state.flightInfo.airlineName} ${state.flightInfo.flightNum}への搭乗を完了。まもなく飛行甲板より発艦いたします。`;
+                } else {
+                    hudAnnouncement.innerText = `皆様、${state.flightInfo.airlineName} ${state.flightInfo.flightNum}便、${destAp.city}行きへようこそ。まもなく出発いたします。`;
+                }
+            }
+            
+            playBeltChimeSound();
+        }
+
+        // 2点間の緯度経度から機首方位(Bearing)を計算する関数
+        function calculateAircraftHeading(curPt, futurePt) {
+            if (!curPt || !futurePt || (curPt.lat === futurePt.lat && curPt.lon === futurePt.lon)) return 0;
+            
+            const lat1 = curPt.lat * Math.PI / 180;
+            const lat2 = futurePt.lat * Math.PI / 180;
+            const dLon = (futurePt.lon - curPt.lon) * Math.PI / 180;
+
+            const y = Math.sin(dLon) * Math.cos(lat2);
+            const x = Math.cos(lat1) * Math.sin(lat2) -
+                      Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+
+            let brng = Math.atan2(y, x);
+            brng = brng * 180 / Math.PI;
+            // 0〜360度に正規化
+            return (brng + 360) % 360;
+        }
+
+        // マーカーのDOM要素を直接安全に回転させる（例外を絶対に生み出さないノーエラー構造）
+        function updatePlaneMarkerIcon(bearing) {
+            if (!state.planeMarker) return;
+            try {
+                const markerElem = state.planeMarker.getElement();
+                if (markerElem) {
+                    const rotator = markerElem.querySelector('.rotating-plane-inner');
+                    if (rotator) {
+                        rotator.style.transform = `rotate(${bearing}deg)`;
+                    }
+                }
+            } catch (err) {
+                console.warn("Skipped marker rotation in this frame:", err);
+            }
+        }
+
+        function renderRouteOnLeaflet() {
+            if (state.plannedPathLine) state.map.removeLayer(state.plannedPathLine);
+            if (state.passedPathLine) state.map.removeLayer(state.passedPathLine);
+            if (state.planeMarker) state.map.removeLayer(state.planeMarker);
+            state.waypointMarkers.forEach(marker => state.map.removeLayer(marker));
+            state.waypointMarkers = [];
+
+            const orig = AIRPORTS[state.origin];
+            const dest = AIRPORTS[state.dest];
+
+            const oIcon = L.divIcon({
+                html: `<div class="flex flex-col items-center"><div class="w-4 h-4 bg-sky-600 rounded-full border-2 border-white shadow-lg animate-ping absolute"></div><div class="w-4 h-4 bg-sky-600 rounded-full border-2 border-white shadow-lg relative z-10"></div><span class="text-[9px] font-extrabold bg-white border border-slate-200 px-1 py-0.5 rounded shadow mt-1 relative z-20">${state.origin}</span></div>`,
+                className: 'airport-node',
+                iconSize: [30, 30],
+                iconAnchor: [15, 8]
+            });
+            const mOrig = L.marker([orig.lat, orig.lon], { icon: oIcon }).addTo(state.map);
+            state.waypointMarkers.push(mOrig);
+
+            const dIcon = L.divIcon({
+                html: `<div class="flex flex-col items-center"><div class="w-4 h-4 bg-indigo-600 rounded-full border-2 border-white shadow-lg"></div><span class="text-[9px] font-extrabold bg-white border border-slate-200 px-1 py-0.5 rounded shadow mt-1">${state.dest}</span></div>`,
+                className: 'airport-node',
+                iconSize: [30, 30],
+                iconAnchor: [15, 8]
+            });
+            const mDest = L.marker([dest.lat, dest.lon], { icon: dIcon }).addTo(state.map);
+            state.waypointMarkers.push(mDest);
+
+            const pathLatLngs = state.routeData.points.map(pt => [pt.lat, pt.lon]);
+            state.plannedPathLine = L.polyline(pathLatLngs, {
+                color: '#93c5fd',
+                weight: 4,
+                dashArray: '3, 6',
+                opacity: 0.8
+            }).addTo(state.map);
+
+            state.passedPathLine = L.polyline([], {
+                color: '#0284c7',
+                weight: 5,
+                opacity: 0.95
+            }).addTo(state.map);
+
+            state.routeData.waypoints.forEach(wp => {
+                if (wp.label === "STAR" || wp.label === "TOUCH" || wp.label === "GATE") return;
+                const wpIcon = L.divIcon({
+                    html: `<div class="flex flex-col items-center"><div class="w-1.5 h-1.5 bg-rose-500 rounded-full border border-white"></div><span class="text-[8px] font-bold text-rose-600 tracking-wider mt-0.5">${wp.label}</span></div>`,
+                    className: 'wp-node',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 4]
+                });
+                const mYp = L.marker([wp.lat, wp.lon], { icon: wpIcon }).addTo(state.map);
+                state.waypointMarkers.push(mYp);
+            });
+
+            // 航空機マーカー初期設置 (一度L.divIconを配置したら、以降は要素の中身だけを安全・軽量にDOM回転させることで絶対安全に設計)
+            const aircraftSvg = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#0284c7" width="30" height="30" style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.3));">
+                    <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L14 19v-5.5l8 2.5z"/>
+                </svg>
+            `;
+            state.planeMarker = L.marker([orig.lat, orig.lon], {
+                icon: L.divIcon({
+                    html: `<div class="rotating-plane-inner" style="transform: rotate(0deg); transition: transform 0.3s ease-out; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">${aircraftSvg}</div>`,
+                    className: 'plane-node',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                })
+            }).addTo(state.map);
+        }
+
+        function startFocusFlight() {
+            if (state.isPlaying && !state.isPaused) return;
+
+            initEngineAudio();
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            state.isPlaying = true;
+            state.isPaused = false;
+
+            if (startBtn) startBtn.disabled = true;
+            if (pauseBtn) pauseBtn.disabled = false;
+            if (abortBtn) abortBtn.disabled = false;
+
+            state.timerId = setInterval(onFlightTimerTick, 1000);
+
+            const isCarrierLaunch = state.origin === 'CVN73' || state.origin === 'LHA7';
+            if (hudAnnouncement) {
+                if (isCarrierLaunch) {
+                    hudAnnouncement.innerText = "当機はまもなく発艦いたします。シートベルトをお締めください。作業や勉強に深く集中しましょう！";
+                } else {
+                    hudAnnouncement.innerText = "当機はまもなく離陸いたします。シートベルトをお締めください。作業や勉強に深く集中しましょう！";
+                }
+            }
+            playBeltChimeSound();
+        }
+
+        function pauseFocusFlight() {
+            if (!state.isPlaying || state.isPaused) return;
+            state.isPaused = true;
+            clearInterval(state.timerId);
+
+            if (startBtn) startBtn.disabled = false;
+            if (pauseBtn) pauseBtn.disabled = true;
+
+            const isCarrierLaunch = state.origin === 'CVN73' || state.origin === 'LHA7';
+            if (hudAnnouncement) {
+                hudAnnouncement.innerText = `フライトを一時停止しました。準備ができたらTakeoffをクリックして${isCarrierLaunch ? 'フライト' : '上昇'}を再開してください。`;
+            }
+            playBeltChimeSound();
+        }
+
+        function confirmAbortFocusFlight() {
+            if (confirm("フライトを中止（リセット）しますか？これまでのマイル実績は加算されません。")) {
+                abortFocusFlight();
+            }
+        }
+
+        function abortFocusFlight() {
+            clearInterval(state.timerId);
+            state.isPlaying = false;
+            state.isPaused = false;
+            state.elapsedSeconds = 0;
+            state.isTurbulent = false;
+
+            document.body.classList.remove('turbulence-active');
+            if (turbulenceAlert) turbulenceAlert.classList.add('hidden');
+
+            if (plannerOverlay) plannerOverlay.classList.remove('hidden');
+            if (nonFullscreenFooter) nonFullscreenFooter.classList.remove('hidden');
+
+            if (hudHeader) {
+                hudHeader.classList.add('opacity-0', '-translate-y-4');
+                hudHeader.classList.remove('opacity-100', 'translate-y-0');
+            }
+            if (hudFooter) {
+                hudFooter.classList.add('opacity-0', 'translate-y-4');
+                hudFooter.classList.remove('opacity-100', 'translate-y-0');
+            }
+
+            const altEl = document.getElementById('altVal');
+            const speedEl = document.getElementById('speedVal');
+            if (altEl) altEl.innerText = "0";
+            if (speedEl) speedEl.innerText = "0";
+
+            if (hudMiniProgressBar) hudMiniProgressBar.style.width = "0%";
+            if (hudProgressTag) hudProgressTag.innerText = "Progress: 0.0%";
+
+            setSeatbeltSignStatus(true);
+
+            if (startBtn) startBtn.disabled = true;
+            if (pauseBtn) pauseBtn.disabled = true;
+            if (abortBtn) abortBtn.disabled = true;
+            if (boardingBtn) boardingBtn.disabled = false;
+
+            if (state.map) state.map.setView([30.0, 120.0], 4);
+            
+            updatePlannerPreviewInfo();
+        }
+
+        // --- タイマークラッシュを完璧に防ぐノンブロッキング防衛プログラミング ---
+        function onFlightTimerTick() {
+            try {
+                state.elapsedSeconds++;
+
+                const remainingSeconds = state.totalSeconds - state.elapsedSeconds;
+                if (remainingSeconds <= 0) {
+                    finishFocusFlightSuccessfully();
+                    return;
+                }
+
+                updateTimerDisplayText();
+
+                // 進行割合の計算 (安全に0.0〜1.0へ制限)
+                const percent = Math.min(Math.max(state.elapsedSeconds / state.totalSeconds, 0), 1);
+
+                // 【セーフティガード】経路データの存在確認とフェールセーフ
+                if (!state.routeData || !state.routeData.points || state.routeData.points.length === 0) {
+                    const origAp = AIRPORTS[state.origin];
+                    const destAp = AIRPORTS[state.dest];
+                    if (origAp && destAp) {
+                        state.routeData = buildRealisticStarRoute(origAp, destAp);
+                    }
+                }
+
+                if (state.routeData && state.routeData.points && state.routeData.points.length > 0) {
+                    const pointsCount = state.routeData.points.length;
+                    const idx = Math.min(Math.floor(percent * pointsCount), pointsCount - 1);
+                    const curPt = state.routeData.points[idx];
+                    const futurePt = state.routeData.points[Math.min(idx + 5, pointsCount - 1)] || curPt;
+
+                    // 航空機の位置移動および確実な機首回転
+                    if (state.planeMarker && curPt) {
+                        state.planeMarker.setLatLng([curPt.lat, curPt.lon]);
+                        
+                        // 角度を計算して、向きを確実に追従
+                        const bearing = calculateAircraftHeading(curPt, futurePt);
+                        updatePlaneMarkerIcon(bearing);
+
+                        // 軌跡描画
+                        if (state.passedPathLine) {
+                            const passedPts = state.routeData.points.slice(0, idx + 1).map(p => [p.lat, p.lon]);
+                            state.passedPathLine.setLatLngs(passedPts);
+                        }
+
+                        // マップ追従
+                        if (idx % 15 === 0 && state.map) {
+                            state.map.setView([curPt.lat, curPt.lon], state.map.getZoom(), { animate: true, duration: 0.7 });
+                        }
+                    }
+                }
+
+                // インジケーター・メーター更新
+                const progressPct = percent * 100;
+                if (hudProgressTag) hudProgressTag.innerText = `Progress: ${progressPct.toFixed(1)}%`;
+                if (hudMiniProgressBar) hudMiniProgressBar.style.width = `${progressPct}%`;
+                if (statusPlaneIcon) statusPlaneIcon.style.left = `${progressPct}%`;
+
+                // ==========================================
+                // 【タキシング前後5分間（300秒）一律ロジック】
+                // 短時間フライトでも破綻しないよう、総時間の最大20%をセーフティ上限に設定
+                // ==========================================
+                const maxTaxiSec = Math.floor(state.totalSeconds * 0.20);
+                const startTaxiSec = Math.min(300, maxTaxiSec);
+                const endTaxiSec = Math.min(300, maxTaxiSec);
+                const activeFlightSec = state.totalSeconds - startTaxiSec - endTaxiSec;
+
+                // 艦載機判定
+                const isCarrierLaunch = state.origin === 'CVN73' || state.origin === 'LHA7';
+
+                let phaseName = "";
+                let alt = 0;
+                let speed = 0;
+                let announcement = "";
+
+                if (state.elapsedSeconds <= startTaxiSec) {
+                    // 1. Taxiing (地上走行・離陸前)
+                    phaseName = isCarrierLaunch ? "Taxiing / 甲板移動中" : "Taxiing / 地上移動中";
+                    if (currentPhaseLabel) currentPhaseLabel.innerText = "TAXI";
+                    alt = 0;
+                    speed = Math.floor(10 + (state.elapsedSeconds / startTaxiSec) * 15);
+                    setSeatbeltSignStatus(true);
+                    announcement = isCarrierLaunch 
+                        ? "飛行甲板へ移動中です。機体は発艦のための最終確認を終えております。" 
+                        : "滑走路へ移動中です。客室は離陸のための安全確認を終えております。";
+                } else if (remainingSeconds <= endTaxiSec) {
+                    // 5. Landing & Taxiing (地上走行・着陸後)
+                    phaseName = "Landing & Taxiing / 着陸完了";
+                    if (currentPhaseLabel) currentPhaseLabel.innerText = "LANDING";
+                    const ratio = Math.min(1, Math.max(0, (endTaxiSec - remainingSeconds) / endTaxiSec));
+                    alt = 0;
+                    speed = Math.floor(130 - ratio * 115);
+                    setSeatbeltSignStatus(true);
+                    announcement = "目的地に無事着陸いたしました。ゲートに向かって地上移動中です。";
+                } else {
+                    // 空中飛行中のフェーズ計算 (アクティブ飛行時間内の進行度合い)
+                    const currentFlightSec = state.elapsedSeconds - startTaxiSec;
+                    const flightProgressPct = (currentFlightSec / activeFlightSec) * 100;
+
+                    if (flightProgressPct < 25) {
+                        // 2. Climb (上昇)
+                        phaseName = isCarrierLaunch ? "Takeoff & Climb / 発艦・上昇中" : "Takeoff & Climb / 上昇中";
+                        if (currentPhaseLabel) currentPhaseLabel.innerText = "CLIMB";
+                        const ratio = flightProgressPct / 25;
+                        alt = Math.floor(ratio * 38000);
+                        speed = Math.floor(150 + ratio * 330);
+                        setSeatbeltSignStatus(true);
+                        announcement = isCarrierLaunch 
+                            ? "無事発艦いたしました。作戦高度まで安全に上昇いたします。" 
+                            : "無事離陸いたしました。巡航高度まで安全に上昇いたします。";
+                    } else if (flightProgressPct < 75) {
+                        // 3. Cruising (巡航飛行)
+                        phaseName = "Cruising / 巡航飛行中";
+                        if (currentPhaseLabel) currentPhaseLabel.innerText = "CRUISE";
+                        alt = 38000;
+                        speed = 495;
+
+                        if (state.isTurbulent) {
+                            setSeatbeltSignStatus(true);
+                            announcement = "現在、軽微な気流の乱れを通過しております。シートベルト着用サインを点灯中です。";
+                        } else {
+                            if (state.elapsedSeconds % 75 === 0 && Math.random() < 0.16) {
+                                triggerTurbulenceEvent(30);
+                            }
+                            setSeatbeltSignStatus(false);
+                            announcement = "高度38,000フィートを巡航中です。集中に適した快適な機内です。";
+                        }
+                    } else {
+                        // 4. Descent (降下・アプローチ)
+                        phaseName = "Descent & STAR / 進入降下中";
+                        if (currentPhaseLabel) currentPhaseLabel.innerText = "DESCENT";
+                        const ratio = (flightProgressPct - 75) / 25;
+                        alt = Math.floor(38000 - ratio * 35000);
+                        speed = Math.floor(495 - ratio * 245);
+                        setSeatbeltSignStatus(true);
+                        announcement = "当機は目的地への降下を開始いたしました。ベルト着用サインが点灯しております。";
+                    }
+                }
+
+                // 自衛隊機や戦闘機の性能に合わせた巡航高度・スピード制限（C-1等用）
+                if (state.flightInfo && state.flightInfo.airlineCode === "JSF") {
+                    if (alt > 28000) alt = 28000;
+                    if (speed > 390) speed = 390;
+                } else if (state.flightInfo && (state.flightInfo.airlineCode === "USN" || state.flightInfo.airlineCode === "USM")) {
+                    // ヘリコプターやオスプレイの場合、高度・速度を実機相当に制限
+                    if (state.flightInfo.aircraft === "MH-60R" || state.flightInfo.aircraft === "MH-60S") {
+                        if (alt > 8000) alt = 8000;
+                        if (speed > 140) speed = 140;
+                    } else if (state.flightInfo.aircraft === "MV-22") {
+                        if (alt > 12000) alt = 12000;
+                        if (speed > 240) speed = 240;
+                    } else {
+                        // スーパーホーネットやF-35等
+                        if (alt > 40000) alt = 40000;
+                        if (speed > 580) speed = 580;
+                    }
+                }
+
+                // 高度とスピードを確実に描画更新
+                const altValEl = document.getElementById('altVal');
+                const speedValEl = document.getElementById('speedVal');
+                if (altValEl) altValEl.innerText = alt.toLocaleString();
+                if (speedValEl) speedValEl.innerText = speed;
+                
+                if (currentPhaseText) currentPhaseText.innerText = phaseName;
+                if (hudAnnouncement) hudAnnouncement.innerText = announcement;
+
+                if (state.isTurbulent) {
+                    state.turbulenceTimeLeft--;
+                    if (state.turbulenceTimeLeft <= 0) {
+                        endTurbulenceEvent();
+                    }
+                }
+            } catch (err) {
+                console.error("Fatal exception caught inside flight tick:", err);
+            }
+        }
+
+        // タイマー分表示
+        function updateTimerDisplayText() {
+            const rem = state.totalSeconds - state.elapsedSeconds;
+            const min = Math.ceil(rem / 60);
+            if (timerDisplay) timerDisplay.innerText = `${min} 分`;
+        }
+
+        function triggerTurbulenceEvent(duration = 30) {
+            if (state.isTurbulent) return;
+            state.isTurbulent = true;
+            state.turbulenceTimeLeft = duration;
+
+            setSeatbeltSignStatus(true);
+            playBeltChimeSound();
+
+            document.body.classList.add('turbulence-active');
+            if (turbulenceAlert) turbulenceAlert.classList.remove('hidden');
+
+            if (jetNoiseFilter && audioCtx) {
+                jetNoiseFilter.frequency.setValueAtTime(70, audioCtx.currentTime);
+                jetNoiseFilter.frequency.exponentialRampToValueAtTime(140, audioCtx.currentTime + 1.2);
+            }
+        }
+
+        function endTurbulenceEvent() {
+            if (!state.isTurbulent) return;
+            state.isTurbulent = false;
+
+            document.body.classList.remove('turbulence-active');
+            if (turbulenceAlert) turbulenceAlert.classList.add('hidden');
+
+            if (jetNoiseFilter && audioCtx) {
+                jetNoiseFilter.frequency.exponentialRampToValueAtTime(130, audioCtx.currentTime + 1.5);
+            }
+
+            const percent = state.elapsedSeconds / state.totalSeconds;
+            if (percent >= 0.25 && percent < 0.75) {
+                setSeatbeltSignStatus(false);
+            }
+            playBeltChimeSound();
+        }
+
+        function setSeatbeltSignStatus(on) {
+            const sign = document.getElementById('seatbeltSign');
+            if (!sign) return;
+            if (on) {
+                sign.className = "w-9 h-5 rounded flex items-center justify-center text-[10px] text-white bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.85)] animate-pulse";
+                sign.innerHTML = `<i class="fa-solid fa-user-slash"></i>`;
+            } else {
+                sign.className = "w-9 h-5 rounded flex items-center justify-center text-[10px] text-slate-400 bg-slate-700";
+                sign.innerHTML = `<i class="fa-solid fa-user"></i>`;
+            }
+        }
+
+        function finishFocusFlightSuccessfully() {
+            clearInterval(state.timerId);
+            state.isPlaying = false;
+
+            endTurbulenceEvent();
+
+            const altEl = document.getElementById('altVal');
+            const speedEl = document.getElementById('speedVal');
+            if (altEl) altEl.innerText = "0";
+            if (speedEl) speedEl.innerText = "0";
+
+            if (hudMiniProgressBar) hudMiniProgressBar.style.width = "100%";
+            if (hudProgressTag) hudProgressTag.innerText = "Progress: 100.0%";
+            if (currentPhaseLabel) currentPhaseLabel.innerText = "ARRIVED";
+
+            const minutes = Math.floor(state.totalSeconds / 60);
+            const miles = minutes * 15;
+            state.totalMiles += miles;
+
+            localStorage.setItem('aerofocus_v3_miles', state.totalMiles);
+            if (totalMilesText) totalMilesText.innerText = `累計実績: ${state.totalMiles} マイル`;
+
+            setSeatbeltSignStatus(false);
+            playBeltChimeSound();
+
+            saveToLogbook(minutes, miles);
+
+            showCustomModal(
+                "ゲートに到着いたしました！",
+                `目標フライト時間の集中を達成しました！実在便を模した実績として ${miles} マイルを獲得しました。`,
+                "fa-trophy", "text-emerald-600", "bg-emerald-50"
+            );
+
+            if (hudAnnouncement) {
+                hudAnnouncement.innerText = "ゲートに無事到着いたしました。本日のインフライトポモドーロのご利用、誠にありがとうございました。";
+            }
+
+            if (plannerOverlay) plannerOverlay.classList.remove('hidden');
+            if (nonFullscreenFooter) nonFullscreenFooter.classList.remove('hidden');
+
+            if (boardingBtn) boardingBtn.disabled = false;
+            if (startBtn) startBtn.disabled = true;
+            if (pauseBtn) pauseBtn.disabled = true;
+            if (abortBtn) abortBtn.disabled = true;
+
+            updatePlannerPreviewInfo();
+        }
+
+        function saveToLogbook(minutes, miles) {
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+            
+            const logEntry = {
+                date: dateStr,
+                route: `${state.origin} ➔ ${state.dest}`,
+                flightNum: state.flightInfo.flightNum,
+                minutes: minutes,
+                miles: miles,
+                code: state.flightInfo.airlineCode
+            };
+
+            const logs = JSON.parse(localStorage.getItem('aerofocus_v3_logs') || '[]');
+            logs.unshift(logEntry);
+            localStorage.setItem('aerofocus_v3_logs', JSON.stringify(logs));
+
+            updateLogbookListUI();
+        }
+
+        function updateLogbookListUI() {
+            const logs = JSON.parse(localStorage.getItem('aerofocus_v3_logs') || '[]');
+            if (!logbookList) return;
+            if (logs.length === 0) {
+                logbookList.innerHTML = `<p class="text-center text-slate-400 font-semibold py-0.5">完了したフライト記録がここに保存されます。</p>`;
+                return;
+            }
+
+            let html = '';
+            logs.forEach(log => {
+                html += `
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-1 mb-1 last:border-0 last:pb-0">
+                        <div class="flex items-center space-x-1.5 font-bold text-slate-700">
+                            <span class="font-mono text-[9px] bg-slate-800 text-white px-1.5 py-0.5 rounded">${log.code}</span>
+                            <span>${log.flightNum} (${log.route})</span>
+                        </div>
+                        <div class="text-slate-500 font-semibold">
+                            <span>${log.minutes}分 集中</span>
+                            <span class="text-sky-600 font-extrabold ml-1.5">+${log.miles}マイル</span>
+                        </div>
+                    </div>
+                `;
+            });
+            logbookList.innerHTML = html;
+        }
+
+        function showCustomModal(title, message, iconClass = "fa-circle-info", textCol = "text-sky-600", bgCol = "bg-sky-50") {
+            if (modalTitle) modalTitle.innerText = title;
+            if (modalMessage) modalMessage.innerText = message;
+            if (modalIcon) {
+                modalIcon.className = `w-12 h-12 rounded-2xl ${bgCol} ${textCol} flex items-center justify-center text-lg mx-auto`;
+                modalIcon.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
+            }
+            if (customModal) customModal.classList.remove('hidden');
+        }
+
+        window.onload = initApp;
+
+    </script>
+</body>
+</html>
