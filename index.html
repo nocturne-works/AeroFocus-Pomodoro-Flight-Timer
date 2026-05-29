@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -104,7 +103,7 @@
                     <i class="fa-solid fa-compass"></i>
                 </div>
                 <h2 class="text-lg font-bold text-slate-900">インフライト・プランを作成</h2>
-                <p class="text-[11px] text-slate-500 font-bold mt-0.5">世界80都市、米軍/自衛隊、外資キャリアやLCCから多彩に提案します</p>
+                <p class="text-[11px] text-slate-500 font-bold mt-0.5">世界80都市、米軍/自衛隊、外資キャリアやLCCから多彩にご提案</p>
             </div>
 
             <div class="h-[1px] bg-slate-200/60"></div>
@@ -334,887 +333,1115 @@
         </div>
     </div>
 
-    <!-- スクリプト制御ロジック -->
-    <script>
-        // --- 1. 空港・路線の精密データマトリクス (世界約80都市規模 & 米軍・自衛隊基地) ---
-        const AIRPORTS = {
-            // 日本国内空港 (18空港)
-            HND: { name: "東京羽田 (HND)", lat: 35.5494, lon: 139.7798, city: "東京", country: "日本", code: "HND" },
-            NRT: { name: "東京成田 (NRT)", lat: 35.7767, lon: 140.3864, city: "東京", country: "日本", code: "NRT" },
-            ITM: { name: "大阪伊丹 (ITM)", lat: 34.7855, lon: 135.4382, city: "大阪", country: "日本", code: "ITM" },
-            KIX: { name: "関西国際 (KIX)", lat: 34.4320, lon: 135.2304, city: "大阪", country: "日本", code: "KIX" },
-            FUK: { name: "福岡 (FUK)", lat: 33.5859, lon: 130.4507, city: "福岡", country: "日本", code: "FUK" },
-            CTS: { name: "新千歳 (CTS)", lat: 42.7752, lon: 141.6923, city: "札幌", country: "日本", code: "CTS" },
-            OKA: { name: "那覇 (OKA)", lat: 26.2064, lon: 127.6465, city: "沖縄", country: "日本", code: "OKA" },
-            KIJ: { name: "新潟 (KIJ)", lat: 37.9564, lon: 139.1114, city: "新潟", country: "日本", code: "KIJ" },
-            UKB: { name: "神戸 (UKB)", lat: 34.6328, lon: 135.2239, city: "神戸", country: "日本", code: "UKB" },
-            NGO: { name: "中部国際 (NGO)", lat: 34.8583, lon: 136.8053, city: "名古屋", country: "日本", code: "NGO" },
-            KOJ: { name: "鹿児島 (KOJ)", lat: 31.8033, lon: 130.7194, city: "鹿児島", country: "日本", code: "KOJ" },
-            KMJ: { name: "熊本 (KMJ)", lat: 32.8372, lon: 130.8550, city: "熊本", country: "日本", code: "KMJ" },
-            MYJ: { name: "松山 (MYJ)", lat: 33.8272, lon: 132.6997, city: "松山", country: "日本", code: "MYJ" },
-            NGS: { name: "長崎 (NGS)", lat: 32.9169, lon: 129.9136, city: "長崎", country: "日本", code: "NGS" },
-            SDJ: { name: "仙台 (SDJ)", lat: 38.1397, lon: 140.9147, city: "仙台", country: "日本", code: "SDJ" },
-            HKD: { name: "函館 (HKD)", lat: 41.7700, lon: 140.8219, city: "函館", country: "日本", code: "HKD" },
-            ISG: { name: "石垣 (ISG)", lat: 24.3964, lon: 124.2447, city: "石垣", country: "日本", code: "ISG" },
-            MMY: { name: "宮古 (MMY)", lat: 24.7831, lon: 125.2953, city: "宮古島", country: "日本", code: "MMY" },
+    <!-- =========================================================================
+         【データ層】FLIGHT DATA SECTION (将来的に flightData.js へ完全切り出し可能)
+         ========================================================================= -->
+    <script id="flight-data-source">
+        window.FLIGHT_DATA = {
+            // 空港・路線の精密データマトリクス (世界約80都市規模 & 米軍・自衛隊基地)
+            AIRPORTS: {
+                // 日本国内空港 (18空港)
+                HND: { name: "東京羽田 (HND)", lat: 35.5494, lon: 139.7798, city: "東京", country: "日本", code: "HND" },
+                NRT: { name: "東京成田 (NRT)", lat: 35.7767, lon: 140.3864, city: "東京", country: "日本", code: "NRT" },
+                ITM: { name: "大阪伊丹 (ITM)", lat: 34.7855, lon: 135.4382, city: "大阪", country: "日本", code: "ITM" },
+                KIX: { name: "関西国際 (KIX)", lat: 34.4320, lon: 135.2304, city: "大阪", country: "日本", code: "KIX" },
+                FUK: { name: "福岡 (FUK)", lat: 33.5859, lon: 130.4507, city: "福岡", country: "日本", code: "FUK" },
+                CTS: { name: "新千歳 (CTS)", lat: 42.7752, lon: 141.6923, city: "札幌", country: "日本", code: "CTS" },
+                OKA: { name: "那覇 (OKA)", lat: 26.2064, lon: 127.6465, city: "沖縄", country: "日本", code: "OKA" },
+                KIJ: { name: "新潟 (KIJ)", lat: 37.9564, lon: 139.1114, city: "新潟", country: "日本", code: "KIJ" },
+                UKB: { name: "神戸 (UKB)", lat: 34.6328, lon: 135.2239, city: "神戸", country: "日本", code: "UKB" },
+                NGO: { name: "中部国際 (NGO)", lat: 34.8583, lon: 136.8053, city: "名古屋", country: "日本", code: "NGO" },
+                KOJ: { name: "鹿児島 (KOJ)", lat: 31.8033, lon: 130.7194, city: "鹿児島", country: "日本", code: "KOJ" },
+                KMJ: { name: "熊本 (KMJ)", lat: 32.8372, lon: 130.8550, city: "熊本", country: "日本", code: "KMJ" },
+                MYJ: { name: "松山 (MYJ)", lat: 33.8272, lon: 132.6997, city: "松山", country: "日本", code: "MYJ" },
+                NGS: { name: "長崎 (NGS)", lat: 32.9169, lon: 129.9136, city: "長崎", country: "日本", code: "NGS" },
+                SDJ: { name: "仙台 (SDJ)", lat: 38.1397, lon: 140.9147, city: "仙台", country: "日本", code: "SDJ" },
+                HKD: { name: "函館 (HKD)", lat: 41.7700, lon: 140.8219, city: "函館", country: "日本", code: "HKD" },
+                ISG: { name: "石垣 (ISG)", lat: 24.3964, lon: 124.2447, city: "石垣", country: "日本", code: "ISG" },
+                MMY: { name: "宮古 (MMY)", lat: 24.7831, lon: 125.2953, city: "宮古島", country: "日本", code: "MMY" },
 
-            // 航空自衛隊基地 (3基地)
-            RJT: { name: "空自 入間基地 (RJT)", lat: 35.8394, lon: 139.4122, city: "狭山/入間基地", country: "自衛隊", code: "RJT" },
-            NKM: { name: "空自 小牧基地 (NKM)", lat: 35.2550, lon: 136.9244, city: "小牧基地", country: "自衛隊", code: "NKM" },
-            YGJ: { name: "空自 美保基地 (YGJ)", lat: 35.4922, lon: 133.2364, city: "境港/美保基地", country: "自衛隊", code: "YGJ" },
+                // 航空自衛隊基地 (3基地)
+                RJT: { name: "空自 入間基地 (RJT)", lat: 35.8394, lon: 139.4122, city: "狭山/入間基地", country: "自衛隊", code: "RJT" },
+                NKM: { name: "空自 小牧基地 (NKM)", lat: 35.2550, lon: 136.9244, city: "小牧基地", country: "自衛隊", code: "NKM" },
+                YGJ: { name: "空自 美保基地 (YGJ)", lat: 35.4922, lon: 133.2364, city: "境港/美保基地", country: "自衛隊", code: "YGJ" },
 
-            // 米軍関連飛行場・空母・揚陸艦 (5拠点)
-            RJOI: { name: "米軍 岩国基地 (RJOI)", lat: 34.1439, lon: 132.2361, city: "岩国基地", country: "米軍", code: "RJOI" },
-            RJTA: { name: "米軍 厚木基地 (RJTA)", lat: 35.4547, lon: 139.4500, city: "厚木基地", country: "米軍", code: "RJTA" },
-            ROTM: { name: "米軍 普天間飛行場 (ROTM)", lat: 26.2736, lon: 127.7583, city: "普天間飛行場", country: "米軍", code: "ROTM" },
-            CVN73: { name: "空母ジョージ・ワシントン (CVN-73)", lat: 34.6000, lon: 139.9000, city: "相模湾沖(艦上)", country: "米軍", code: "CVN73" },
-            LHA7: { name: "強襲揚陸艦トリポリ (LHA-7)", lat: 32.8000, lon: 129.2000, city: "佐世保沖(艦上)", country: "米軍", code: "LHA7" },
+                // 米軍関連飛行場・空母・揚陸艦 (5拠点)
+                RJOI: { name: "米軍 岩国基地 (RJOI)", lat: 34.1439, lon: 132.2361, city: "岩国基地", country: "米軍", code: "RJOI" },
+                RJTA: { name: "米軍 厚木基地 (RJTA)", lat: 35.4547, lon: 139.4500, city: "厚木基地", country: "米軍", code: "RJTA" },
+                ROTM: { name: "米軍 普天間飛行場 (ROTM)", lat: 26.2736, lon: 127.7583, city: "普天間飛行場", country: "米軍", code: "ROTM" },
+                CVN73: { name: "空母ジョージ・ワシントン (CVN-73)", lat: 34.6000, lon: 139.9000, city: "相模湾沖(艦上)", country: "米軍", code: "CVN73" },
+                LHA7: { name: "強襲揚陸艦トリポリ (LHA-7)", lat: 32.8000, lon: 129.2000, city: "佐世保沖(艦上)", country: "米軍", code: "LHA7" },
 
-            // アジア太平洋ルート (27空港)
-            ICN: { name: "ソウル仁川 (ICN)", lat: 37.4602, lon: 126.4407, city: "ソウル", country: "韓国", code: "ICN" },
-            GMP: { name: "ソウル金浦 (GMP)", lat: 37.5583, lon: 126.7906, city: "ソウル", country: "韓国", code: "GMP" },
-            PUS: { name: "釜山 (PUS)", lat: 35.1794, lon: 128.9383, city: "釜山", country: "韓国", code: "PUS" },
-            TPE: { name: "台北桃園 (TPE)", lat: 25.0797, lon: 121.2342, city: "台北", country: "台湾", code: "TPE" },
-            KHH: { name: "高雄 (KHH)", lat: 22.5711, lon: 120.3500, city: "高雄", country: "台湾", code: "KHH" },
-            HKG: { name: "香港 (HKG)", lat: 22.3080, lon: 113.9185, city: "香港", country: "香港", code: "HKG" },
-            PEK: { name: "北京首都 (PEK)", lat: 40.0799, lon: 116.6031, city: "北京", country: "中国", code: "PEK" },
-            PVG: { name: "上海浦東 (PVG)", lat: 31.1443, lon: 121.8083, city: "上海", country: "中国", code: "PVG" },
-            CAN: { name: "広州白雲 (CAN)", lat: 23.3925, lon: 113.2988, city: "広州", country: "中国", code: "CAN" },
-            SZX: { name: "深セン宝安 (SZX)", lat: 22.6394, lon: 113.8108, city: "深セン", country: "中国", code: "SZX" },
-            CTU: { name: "成都天府 (TFU)", lat: 30.3153, lon: 104.4447, city: "成都", country: "中国", code: "TFU" },
-            HRB: { name: "ハルビン太平 (HRB)", lat: 45.6233, lon: 126.2503, city: "ハルビン", country: "中国", code: "HRB" },
-            BKK: { name: "バンコク・スワンナプーム (BKK)", lat: 13.6900, lon: 100.7501, city: "バンコク", country: "タイ", code: "BKK" },
-            HKT: { name: "プーケット (HKT)", lat: 8.1133, lon: 98.3067, city: "プーケット", country: "タイ", code: "HKT" },
-            CNX: { name: "チェンマイ (CNX)", lat: 18.7728, lon: 98.9628, city: "チェンマイ", country: "タイ", code: "CNX" },
-            SIN: { name: "シンガポール・チャンギ (SIN)", lat: 1.3644, lon: 103.9915, city: "シンガポール", country: "シンガポール", code: "SIN" },
-            KUL: { name: "クアラルンプール (KUL)", lat: 2.7456, lon: 101.7072, city: "クアラルンプール", country: "マレーシア", code: "KUL" },
-            PEN: { name: "ペナン (PEN)", lat: 5.2972, lon: 100.2767, city: "ペナン", country: "マレーシア", code: "PEN" },
-            CGK: { name: "ジャカルタ (CGK)", lat: -6.1256, lon: 106.6558, city: "ジャカルタ", country: "インドネシア", code: "CGK" },
-            DPS: { name: "バリ・デンパサール (DPS)", lat: -8.7481, lon: 115.1672, city: "バリ", country: "インドネシア", code: "DPS" },
-            MNL: { name: "マニラ (MNL)", lat: 14.5086, lon: 121.0194, city: "マニラ", country: "フィリピン", code: "MNL" },
-            CEB: { name: "セブ (CEB)", lat: 10.3075, lon: 123.9794, city: "セブ", country: "フィリピン", code: "CEB" },
-            DEL: { name: "デリー (DEL)", lat: 28.5562, lon: 77.1000, city: "デリー", country: "インド", code: "DEL" },
-            SGN: { name: "ホーチミン (SGN)", lat: 10.8188, lon: 106.6519, city: "ホーチミン", country: "ベトナム", code: "SGN" },
-            DAD: { name: "ダナン (DAD)", lat: 16.0439, lon: 108.1994, city: "ダナン", country: "ベトナム", code: "DAD" },
-            SYD: { name: "シドニー (SYD)", lat: -33.9461, lon: 151.1772, city: "シドニー", country: "オーストラリア", code: "SYD" },
-            MEL: { name: "メルボルン (MEL)", lat: -37.6733, lon: 144.8433, city: "メルボルン", country: "オーストラリア", code: "MEL" },
+                // アジアルート (33空港)
+                ICN: { name: "ソウル仁川 (ICN)", lat: 37.4602, lon: 126.4407, city: "ソウル", country: "韓国", code: "ICN" },
+                GMP: { name: "ソウル金浦 (GMP)", lat: 37.5583, lon: 126.7906, city: "ソウル", country: "韓国", code: "GMP" },
+                PUS: { name: "釜山 (PUS)", lat: 35.1794, lon: 128.9383, city: "釜山", country: "韓国", code: "PUS" },
+                TPE: { name: "台北桃園 (TPE)", lat: 25.0797, lon: 121.2342, city: "台北", country: "台湾", code: "TPE" },
+                KHH: { name: "高雄 (KHH)", lat: 22.5711, lon: 120.3500, city: "高雄", country: "台湾", code: "KHH" },
+                HKG: { name: "香港 (HKG)", lat: 22.3080, lon: 113.9185, city: "香港", country: "香港", code: "HKG" },
+                PEK: { name: "北京首都 (PEK)", lat: 40.0799, lon: 116.6031, city: "北京", country: "中国", code: "PEK" },
+                PVG: { name: "上海浦東 (PVG)", lat: 31.1443, lon: 121.8083, city: "上海", country: "中国", code: "PVG" },
+                CAN: { name: "広州白雲 (CAN)", lat: 23.3925, lon: 113.2988, city: "広州", country: "中国", code: "CAN" },
+                SZX: { name: "深セン宝安 (SZX)", lat: 22.6394, lon: 113.8108, city: "深セン", country: "中国", code: "SZX" },
+                CTU: { name: "成都天府 (TFU)", lat: 30.3153, lon: 104.4447, city: "成都", country: "中国", code: "TFU" },
+                XIY: { name: "西安咸陽 (XIY)", lat: 34.4471, lon: 108.7516, city: "西安", country: "中国", code: "XIY" },
+                CKG: { name: "重慶江北 (CKG)", lat: 29.7192, lon: 106.6417, city: "重慶", country: "中国", code: "CKG" },
+                KMG: { name: "昆明長水 (KMG)", lat: 25.1019, lon: 102.9292, city: "昆明", country: "中国", code: "KMG" },
+                HGH: { name: "杭州蕭山 (HGH)", lat: 30.2294, lon: 120.4344, city: "杭州", country: "中国", code: "HGH" },
+                XMN: { name: "厦門高崎 (XMN)", lat: 24.5442, lon: 118.1278, city: "厦門", country: "中国", code: "XMN" },
+                TAO: { name: "青島膠東 (TAO)", lat: 36.3497, lon: 120.0744, city: "青島", country: "中国", code: "TAO" },
+                HRB: { name: "ハルビン太平 (HRB)", lat: 45.6233, lon: 126.2503, city: "ハルビン", country: "中国", code: "HRB" },
+                BKK: { name: "バンコク・スワンナプーム (BKK)", lat: 13.6900, lon: 100.7501, city: "バンコク", country: "タイ", code: "BKK" },
+                HKT: { name: "プーケット (HKT)", lat: 8.1133, lon: 98.3067, city: "プーケット", country: "タイ", code: "HKT" },
+                CNX: { name: "チェンマイ (CNX)", lat: 18.7728, lon: 98.9628, city: "チェンマイ", country: "タイ", code: "CNX" },
+                SIN: { name: "シンガポール・チャンギ (SIN)", lat: 1.3644, lon: 103.9915, city: "シンガポール", country: "シンガポール", code: "SIN" },
+                KUL: { name: "クアラルンプール (KUL)", lat: 2.7456, lon: 101.7072, city: "クアラルンプール", country: "マレーシア", code: "KUL" },
+                PEN: { name: "ペナン (PEN)", lat: 5.2972, lon: 100.2767, city: "ペナン", country: "マレーシア", code: "PEN" },
+                CGK: { name: "ジャカルタ (CGK)", lat: -6.1256, lon: 106.6558, city: "ジャカルタ", country: "インドネシア", code: "CGK" },
+                DPS: { name: "バリ・デンパサール (DPS)", lat: -8.7481, lon: 115.1672, city: "バリ", country: "インドネシア", code: "DPS" },
+                MNL: { name: "マニラ (MNL)", lat: 14.5086, lon: 121.0194, city: "マニラ", country: "フィリピン", code: "MNL" },
+                CEB: { name: "セブ (CEB)", lat: 10.3075, lon: 123.9794, city: "セブ", country: "フィリピン", code: "CEB" },
+                DEL: { name: "デリー (DEL)", lat: 28.5562, lon: 77.1000, city: "デリー", country: "インド", code: "DEL" },
+                SGN: { name: "ホーチミン (SGN)", lat: 10.8188, lon: 106.6519, city: "ホーチミン", country: "ベトナム", code: "SGN" },
+                DAD: { name: "ダナン (DAD)", lat: 16.0439, lon: 108.1994, city: "ダナン", country: "ベトナム", code: "DAD" },
+                SYD: { name: "シドニー (SYD)", lat: -33.9461, lon: 151.1772, city: "シドニー", country: "オーストラリア", code: "SYD" },
+                MEL: { name: "メルボルン (MEL)", lat: -37.6733, lon: 144.8433, city: "メルボルン", country: "オーストラリア", code: "MEL" },
 
-            // ヨーロッパ・中東 (19空港)
-            LHR: { name: "ロンドン・ヒースロー (LHR)", lat: 51.4700, lon: -0.4543, city: "ロンドン", country: "英国", code: "LHR" },
-            LGW: { name: "ロンドン・ガトウィック (LGW)", lat: 51.1481, lon: -0.1903, city: "ロンドン", country: "英国", code: "LGW" },
-            CDG: { name: "パリ・シャルル・ド・ゴール (CDG)", lat: 49.0097, lon: 2.5479, city: "パリ", country: "フランス", code: "CDG" },
-            ORY: { name: "パリ・オルリー (ORY)", lat: 48.7262, lon: 2.3652, city: "パリ", country: "フランス", code: "ORY" },
-            FRA: { name: "フランクフルト (FRA)", lat: 50.0379, lon: 8.5622, city: "フランクフルト", country: "ドイツ", code: "FRA" },
-            MUC: { name: "ミュンヘン (MUC)", lat: 48.3538, lon: 11.7861, city: "ミュンヘン", country: "ドイツ", code: "MUC" },
-            AMS: { name: "アムステルダム (AMS)", lat: 52.3105, lon: 4.7683, city: "アムステルダム", country: "オランダ", code: "AMS" },
-            ZRH: { name: "チューリッヒ (ZRH)", lat: 47.4581, lon: 8.5481, city: "チューリッヒ", country: "スイス", code: "ZRH" },
-            FCO: { name: "ローマ・フィウミチーノ (FCO)", lat: 41.8003, lon: 12.2389, city: "ローマ", country: "イタリア", code: "FCO" },
-            MXP: { name: "ミラノ・マルペンサ (MXP)", lat: 45.6300, lon: 8.7231, city: "ミラノ", country: "イタリア", code: "MXP" },
-            MAD: { name: "マドリード (MAD)", lat: 40.4914, lon: -3.5672, city: "マドリード", country: "スペイン", code: "MAD" },
-            BCN: { name: "バルセロナ (BCN)", lat: 41.2971, lon: 2.0784, city: "バルセロナ", country: "スペイン", code: "BCN" },
-            CPH: { name: "コペンハーゲン (CPH)", lat: 55.6179, lon: 12.6560, city: "コペンハーゲン", country: "デンマーク", code: "CPH" },
-            HEL: { name: "ヘルシンキ (HEL)", lat: 60.3172, lon: 24.9633, city: "ヘルシンキ", country: "フィンランド", code: "HEL" },
-            IST: { name: "イスタンブール (IST)", lat: 41.2750, lon: 28.7519, city: "イスタンブール", country: "トルコ", code: "IST" },
-            DXB: { name: "ドバイ国際 (DXB)", lat: 25.2532, lon: 55.3657, city: "ドバイ", country: "UAE", code: "DXB" },
-            AUH: { name: "アブダビ (AUH)", lat: 24.4331, lon: 54.6511, city: "アブダビ", country: "UAE", code: "AUH" },
-            DOH: { name: "ドーハ・ハマド (DOH)", lat: 25.2731, lon: 51.6081, city: "ドーハ", country: "カタール", code: "DOH" },
-            CAI: { name: "カイロ (CAI)", lat: 30.1219, lon: 31.4056, city: "カイロ", country: "エジプト", code: "CAI" },
+                // ヨーロッパ・中東 (19空港)
+                LHR: { name: "ロンドン・ヒースロー (LHR)", lat: 51.4700, lon: -0.4543, city: "ロンドン", country: "英国", code: "LHR" },
+                LGW: { name: "ロンドン・ガトウィック (LGW)", lat: 51.1481, lon: -0.1903, city: "ロンドン", country: "英国", code: "LGW" },
+                CDG: { name: "パリ・シャルル・ド・ゴール (CDG)", lat: 49.0097, lon: 2.5479, city: "パリ", country: "フランス", code: "CDG" },
+                ORY: { name: "パリ・オルリー (ORY)", lat: 48.7262, lon: 2.3652, city: "パリ", country: "フランス", code: "ORY" },
+                FRA: { name: "フランクフルト (FRA)", lat: 50.0379, lon: 8.5622, city: "フランクフルト", country: "ドイツ", code: "FRA" },
+                MUC: { name: "ミュンヘン (MUC)", lat: 48.3538, lon: 11.7861, city: "ミュンヘン", country: "ドイツ", code: "MUC" },
+                AMS: { name: "アムステルダム (AMS)", lat: 52.3105, lon: 4.7683, city: "アムステルダム", country: "オランダ", code: "AMS" },
+                ZRH: { name: "チューリッヒ (ZRH)", lat: 47.4581, lon: 8.5481, city: "チューリッヒ", country: "スイス", code: "ZRH" },
+                FCO: { name: "ローマ・フィウミチーノ (FCO)", lat: 41.8003, lon: 12.2389, city: "ローマ", country: "イタリア", code: "FCO" },
+                MXP: { name: "ミラノ・マルペンサ (MXP)", lat: 45.6300, lon: 8.7231, city: "ミラノ", country: "イタリア", code: "MXP" },
+                MAD: { name: "マドリード (MAD)", lat: 40.4914, lon: -3.5672, city: "マドリード", country: "スペイン", code: "MAD" },
+                BCN: { name: "バルセロナ (BCN)", lat: 41.2971, lon: 2.0784, city: "バルセロナ", country: "スペイン", code: "BCN" },
+                CPH: { name: "コペンハーゲン (CPH)", lat: 55.6179, lon: 12.6560, city: "コペンハーゲン", country: "デンマーク", code: "CPH" },
+                HEL: { name: "ヘルシンキ (HEL)", lat: 60.3172, lon: 24.9633, city: "ヘルシンキ", country: "フィンランド", code: "HEL" },
+                IST: { name: "イスタンブール (IST)", lat: 41.2750, lon: 28.7519, city: "イスタンブール", country: "トルコ", code: "IST" },
+                DXB: { name: "ドバイ国際 (DXB)", lat: 25.2532, lon: 55.3657, city: "ドバイ", country: "UAE", code: "DXB" },
+                AUH: { name: "アブダビ (AUH)", lat: 24.4331, lon: 54.6511, city: "アブダビ", country: "UAE", code: "AUH" },
+                DOH: { name: "ドーハ・ハマド (DOH)", lat: 25.2731, lon: 51.6081, city: "ドーハ", country: "カタール", code: "DOH" },
+                CAI: { name: "カイロ (CAI)", lat: 30.1219, lon: 31.4056, city: "カイロ", country: "エジプト", code: "CAI" },
 
-            // 北米 (14空港)
-            JFK: { name: "ニューヨークJFK (JFK)", lat: 40.6413, lon: -73.7781, city: "ニューヨーク", country: "米国", code: "JFK" },
-            EWR: { name: "ニューアーク (EWR)", lat: 40.6925, lon: -74.1686, city: "ニューアーク", country: "米国", code: "EWR" },
-            LGA: { name: "ニューヨークLGA (LGA)", lat: 40.7769, lon: -73.8740, city: "ニューヨーク", country: "米国", code: "LGA" },
-            LAX: { name: "ロサンゼルス (LAX)", lat: 33.9416, lon: -118.4085, city: "ロサンゼルス", country: "米国", code: "LAX" },
-            SFO: { name: "サンフランシスコ (SFO)", lat: 37.6213, lon: -122.3790, city: "サンフランシスコ", country: "米国", code: "SFO" },
-            ORD: { name: "シカゴ・オヘア (ORD)", lat: 41.9742, lon: -87.9073, city: "シカゴ", country: "米国", code: "ORD" },
-            DFW: { name: "ダラス (DFW)", lat: 32.8998, lon: -97.0403, city: "ダラス", country: "米国", code: "DFW" },
-            ATL: { name: "アトランタ (ATL)", lat: 33.6407, lon: -84.4277, city: "アトランタ", country: "米国", code: "ATL" },
-            MIA: { name: "マイアミ (MIA)", lat: 25.7959, lon: -80.2872, city: "マイアミ", country: "米国", code: "MIA" },
-            SEA: { name: "シアトル (SEA)", lat: 47.4502, lon: -122.3088, city: "シアトル", country: "米国", code: "SEA" },
-            IAH: { name: "ヒューストン (IAH)", lat: 29.9902, lon: -95.3368, city: "ヒューストン", country: "米国", code: "IAH" },
-            DEN: { name: "デンバー (DEN)", lat: 39.8561, lon: -104.6737, city: "デンバー", country: "米国", code: "DEN" },
-            BOS: { name: "ボストン (BOS)", lat: 42.3656, lon: -71.0096, city: "ボストン", country: "米国", code: "BOS" },
-            YVR: { name: "バンクーバー (YVR)", lat: 49.1967, lon: -123.1815, city: "バンクーバー", country: "カナダ", code: "YVR" }
-        };
+                // 北米 (14空港)
+                JFK: { name: "ニューヨークJFK (JFK)", lat: 40.6413, lon: -73.7781, city: "ニューヨーク", country: "米国", code: "JFK" },
+                EWR: { name: "ニューアーク (EWR)", lat: 40.6925, lon: -74.1686, city: "ニューアーク", country: "米国", code: "EWR" },
+                LGA: { name: "ニューヨークLGA (LGA)", lat: 40.7769, lon: -73.8740, city: "ニューヨーク", country: "米国", code: "LGA" },
+                LAX: { name: "ロサンゼルス (LAX)", lat: 33.9416, lon: -118.4085, city: "ロサンゼルス", country: "米国", code: "LAX" },
+                SFO: { name: "サンフランシスコ (SFO)", lat: 37.6213, lon: -122.3790, city: "サンフランシスコ", country: "米国", code: "SFO" },
+                ORD: { name: "シカゴ・オヘア (ORD)", lat: 41.9742, lon: -87.9073, city: "シカゴ", country: "米国", code: "ORD" },
+                DFW: { name: "ダラス (DFW)", lat: 32.8998, lon: -97.0403, city: "ダラス", country: "米国", code: "DFW" },
+                ATL: { name: "アトランタ (ATL)", lat: 33.6407, lon: -84.4277, city: "アトランタ", country: "米国", code: "ATL" },
+                MIA: { name: "マイアミ (MIA)", lat: 25.7959, lon: -80.2872, city: "マイアミ", country: "米国", code: "MIA" },
+                SEA: { name: "シアトル (SEA)", lat: 47.4502, lon: -122.3088, city: "シアトル", country: "米国", code: "SEA" },
+                IAH: { name: "ヒューストン (IAH)", lat: 29.9902, lon: -95.3368, city: "ヒューストン", country: "米国", code: "IAH" },
+                DEN: { name: "デンバー (DEN)", lat: 39.8561, lon: -104.6737, city: "デンバー", country: "米国", code: "DEN" },
+                BOS: { name: "ボストン (BOS)", lat: 42.3656, lon: -71.0096, city: "ボストン", country: "米国", code: "BOS" },
+                YVR: { name: "バンクーバー (YVR)", lat: 49.1967, lon: -123.1815, city: "バンクーバー", country: "カナダ", code: "YVR" }
+            },
 
-        // 時間スロット別・実在路線の動的多角化データベース
-        const FLIGHT_ROUTING_DATABASE = {
-            HND: [
-                { limit: 45, dests: [
-                    { dest: "ITM", realMin: 75, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL115", aircraft: "B787-8" }, { name: "全日本空輸", code: "ANA", flightNum: "NH25", aircraft: "B777-200" }] },
-                    { dest: "NGO", realMin: 60, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH86", aircraft: "B737-800" }] },
-                    { dest: "KIJ", realMin: 60, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1857", aircraft: "Q400" }] }
-                ]},
-                { limit: 120, dests: [
-                    { dest: "FUK", realMin: 110, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL313", aircraft: "A350-900" }, { name: "全日本空輸", code: "ANA", flightNum: "NH243", aircraft: "B787-9" }] },
-                    { dest: "CTS", realMin: 95, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL513", aircraft: "A350-900" }, { name: "全日本空輸", code: "ANA", flightNum: "NH65", aircraft: "B777-300" }] },
-                    { dest: "KOJ", realMin: 105, airlines: [{ name: "スカイマーク", code: "SKY", flightNum: "BC303", aircraft: "B737-800" }] }
-                ]},
-                { limit: 180, dests: [
-                    { dest: "ICN", realMin: 155, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ177", aircraft: "A330-300" }, { name: "大韓航空", code: "KAL", flightNum: "KE2102", aircraft: "A321neo" }] },
-                    { dest: "GMP", realMin: 145, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL91", aircraft: "B787-9" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "SGN", realMin: 360, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL759", aircraft: "B787-9" }] },
-                    { dest: "BKK", realMin: 355, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG683", aircraft: "A350-900" }, { name: "全日本空輸", code: "ANA", flightNum: "NH847", aircraft: "B787-9" }] }
-                ]}
-            ],
-            NRT: [
-                { limit: 90, dests: [
-                    { dest: "CTS", realMin: 95, airlines: [{ name: "ピーチ・アビエーション", code: "APJ", flightNum: "MM563", aircraft: "A320" }, { name: "ジェットスター・ジャパン", code: "JJP", flightNum: "GK111", aircraft: "A321neo" }] },
-                    { dest: "ITM", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH3239", aircraft: "B737-800" }] }
-                ]},
-                { limit: 180, dests: [
-                    { dest: "ICN", realMin: 160, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE704", aircraft: "B777-300ER" }] },
-                    { dest: "TPE", realMin: 215, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR197", aircraft: "B787-10" }] },
-                    { dest: "PUS", realMin: 130, airlines: [{ name: "チェジュ航空", code: "JJA", flightNum: "7C1153", aircraft: "B737-800" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "BKK", realMin: 360, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG643", aircraft: "A350-900" }] },
-                    { dest: "SIN", realMin: 355, airlines: [{ name: "スクート", code: "TGW", flightNum: "TR809", aircraft: "B787-9" }, { name: "ZIPAIR", code: "TZP", flightNum: "ZG53", aircraft: "B787-8" }] },
-                    { dest: "CAN", realMin: 310, airlines: [{ name: "中国南方航空", code: "CSN", flightNum: "CZ386", aircraft: "A350-900" }] }
-                ]}
-            ],
-            ITM: [
-                { limit: 90, dests: [
-                    { dest: "HND", realMin: 70, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL112", aircraft: "B787-8" }, { name: "全日本空輸", code: "ANA", flightNum: "NH18", aircraft: "B777-200" }] },
-                    { dest: "KIJ", realMin: 65, airlines: [{ name: "アイベックスエアラインズ", code: "IBX", flightNum: "FW73", aircraft: "CRJ-700" }, { name: "日本航空", code: "JAL", flightNum: "JL2241", aircraft: "E170" }] }
-                ]},
-                { limit: 180, dests: [
-                    { dest: "CTS", realMin: 110, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH775", aircraft: "B787-8" }] },
-                    { dest: "FUK", realMin: 75, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL2053", aircraft: "E190" }] }
-                ]}
-            ],
-            KIX: [
-                { limit: 120, dests: [
-                    { dest: "HND", realMin: 70, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL224", aircraft: "B787-8" }] },
-                    { dest: "OKA", realMin: 120, airlines: [{ name: "ピーチ", code: "APJ", flightNum: "MM211", aircraft: "A320" }] },
-                    { dest: "CTS", realMin: 115, airlines: [{ name: "ピーチ", code: "APJ", flightNum: "MM103", aircraft: "A320" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "TPE", realMin: 170, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR131", aircraft: "B777-300ER" }] },
-                    { dest: "HKG", realMin: 240, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX503", aircraft: "B777-300" }] },
-                    { dest: "ICN", realMin: 110, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE724", aircraft: "A330-300" }] },
-                    { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ619", aircraft: "B787-10" }] }
-                ]}
-            ],
-            FUK: [
-                { limit: 120, dests: [
-                    { dest: "HND", realMin: 95, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH250", aircraft: "B787-9" }] },
-                    { dest: "ITM", realMin: 75, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL2050", aircraft: "E190" }] },
-                    { dest: "OKA", realMin: 100, airlines: [{ name: "ソラシドエア", code: "SNJ", flightNum: "SNJ81", aircraft: "B737-800" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "TPE", realMin: 155, airlines: [{ name: "スターラックス航空", code: "SLA", flightNum: "JX841", aircraft: "A330neo" }] },
-                    { dest: "ICN", realMin: 85, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ131", aircraft: "A321" }] },
-                    { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ655", aircraft: "B787-10" }] }
-                ]}
-            ],
-            CTS: [
-                { limit: 90, dests: [
-                    { dest: "KIJ", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1858", aircraft: "Q400" }] }
-                ]},
-                { limit: 180, dests: [
-                    { dest: "HND", realMin: 95, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL514", aircraft: "A350-900" }] },
-                    { dest: "NRT", realMin: 95, airlines: [{ name: "スプリング・ジャパン", code: "SJP", flightNum: "IJ832", aircraft: "B737-800" }] }
-                ]}
-            ],
-            OKA: [
-                { limit: 120, dests: [
-                    { dest: "FUK", realMin: 100, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL3606", aircraft: "B737-800" }] },
-                    { dest: "ITM", realMin: 115, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH764", aircraft: "B787-8" }] },
-                    { dest: "NGO", realMin: 120, airlines: [{ name: "スカイマーク", code: "SKY", flightNum: "BC552", aircraft: "B737-800" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "HND", realMin: 140, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL902", aircraft: "A350-900" }] },
-                    { dest: "TPE", realMin: 95, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR113", aircraft: "A321" }] },
-                    { dest: "ICN", realMin: 135, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ171", aircraft: "A321neo" }] }
-                ]}
-            ],
-            KIJ: [
-                { limit: 90, dests: [
-                    { dest: "ITM", realMin: 70, airlines: [{ name: "アイベックス", code: "IBX", flightNum: "FW74", aircraft: "CRJ-700" }] },
-                    { dest: "CTS", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1857", aircraft: "Q400" }] }
-                ]},
-                { limit: 180, dests: [
-                    { dest: "FUK", realMin: 120, airlines: [{ name: "アイベックス", code: "IBX", flightNum: "FW84", aircraft: "CRJ-700" }] },
-                    { dest: "ICN", realMin: 155, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE764", aircraft: "B737-900" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "TPE", realMin: 220, airlines: [{ name: "タイガーエア台湾", code: "TTW", flightNum: "IT229", aircraft: "A320" }] }
-                ]}
-            ],
-            UKB: [
-                { limit: 120, dests: [
-                    { dest: "HND", realMin: 70, airlines: [{ name: "スカイマーク", code: "SKY", flightNum: "BC102", aircraft: "B737-800" }] },
-                    { dest: "CTS", realMin: 110, airlines: [{ name: "スカイマーク", code: "SKY", flightNum: "BC171", aircraft: "B737-800" }] },
-                    { dest: "OKA", realMin: 125, airlines: [{ name: "スカイマーク", code: "SKY", flightNum: "BC591", aircraft: "B737-800" }] }
-                ]}
-            ],
-            NGO: [
-                { limit: 120, dests: [
-                    { dest: "HND", realMin: 60, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH86", aircraft: "B737-800" }] },
-                    { dest: "CTS", realMin: 100, airlines: [{ name: "AIRDO", code: "ADO", flightNum: "ADO127", aircraft: "B737-700" }] },
-                    { dest: "FUK", realMin: 85, airlines: [{ name: "スターフライヤー", code: "SFJ", flightNum: "SFJ31", aircraft: "A320" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "TPE", realMin: 195, airlines: [{ name: "チャイナエアライン", code: "CAL", flightNum: "CI151", aircraft: "A330-300" }] },
-                    { dest: "HKG", realMin: 255, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX531", aircraft: "A350-900" }] },
-                    { dest: "SIN", realMin: 365, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ671", aircraft: "B787-10" }] }
-                ]}
-            ],
-            KOJ: [
-                { limit: 120, dests: [
-                    { dest: "HND", realMin: 100, airlines: [{ name: "ソラシドエア", code: "SNJ", flightNum: "SNJ74", aircraft: "B737-800" }] },
-                    { dest: "ITM", realMin: 75, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL2402", aircraft: "E190" }] },
-                    { dest: "NGO", realMin: 85, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH352", aircraft: "B737-800" }] }
-                ]}
-            ],
-            KMJ: [
-                { limit: 120, dests: [
-                    { dest: "HND", realMin: 100, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL622", aircraft: "B767-300" }] },
-                    { dest: "ITM", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1626", aircraft: "Q400" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "TPE", realMin: 140, airlines: [{ name: "チャイナエアライン", code: "CAL", flightNum: "CI195", aircraft: "A321neo" }] }
-                ]}
-            ],
-            MYJ: [
-                { limit: 120, dests: [
-                    { dest: "HND", realMin: 80, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL432", aircraft: "B737-800" }] },
-                    { dest: "ITM", realMin: 50, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1632", aircraft: "Q400" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "ICN", realMin: 105, airlines: [{ name: "チェジュ航空", code: "JJA", flightNum: "7C1481", aircraft: "B737-800" }] }
-                ]}
-            ],
-            NGS: [
-                { limit: 120, dests: [
-                    { dest: "HND", realMin: 95, airlines: [{ name: "ソラシドエア", code: "SNJ", flightNum: "SNJ32", aircraft: "B737-800" }] },
-                    { dest: "ITM", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1660", aircraft: "Q400" }] }
-                ]}
-            ],
-            SDJ: [
-                { limit: 120, dests: [
-                    { dest: "CTS", realMin: 75, airlines: [{ name: "ピーチ", code: "APJ", flightNum: "MM413", aircraft: "A320" }] },
-                    { dest: "ITM", realMin: 80, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL2202", aircraft: "E170" }] },
-                    { dest: "FUK", realMin: 115, airlines: [{ name: "アイベックス", code: "IBX", flightNum: "FW12", aircraft: "CRJ-700" }] }
-                ]}
-            ],
-            HKD: [
-                { limit: 120, dests: [
-                    { dest: "HND", realMin: 85, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH554", aircraft: "B767-300" }] },
-                    { dest: "ITM", realMin: 100, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH746", aircraft: "B737-800" }] }
-                ]}
-            ],
-            ISG: [
-                { limit: 120, dests: [
-                    { dest: "OKA", realMin: 60, airlines: [{ name: "日本トランスオーシャン", code: "JTA", flightNum: "NU600", aircraft: "B737-800" }] },
-                    { dest: "KIX", realMin: 125, airlines: [{ name: "ピーチ", code: "APJ", flightNum: "MM232", aircraft: "A320" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "HND", realMin: 160, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH92", aircraft: "B787-8" }] }
-                ]}
-            ],
-            MMY: [
-                { limit: 120, dests: [
-                    { dest: "OKA", realMin: 50, airlines: [{ name: "日本トランスオーシャン", code: "JTA", flightNum: "NU556", aircraft: "B737-800" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "HND", realMin: 160, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL932", aircraft: "B737-800" }] }
-                ]}
-            ],
-            ICN: [
-                { limit: 120, dests: [
-                    { dest: "FUK", realMin: 80, airlines: [{ name: "チェジュ航空", code: "JJA", flightNum: "7C1402", aircraft: "B737-800" }] },
-                    { dest: "KIX", realMin: 105, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE723", aircraft: "A330-300" }] },
-                    { dest: "PVG", realMin: 120, airlines: [{ name: "中国東方航空", code: "CES", flightNum: "MU5052", aircraft: "A321" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "NRT", realMin: 145, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ102", aircraft: "A380" }] },
-                    { dest: "TPE", realMin: 165, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR169", aircraft: "B777-300ER" }] },
-                    { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ611", aircraft: "B787-10" }] },
-                    { dest: "HKG", realMin: 230, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX419", aircraft: "A350-900" }] }
-                ]}
-            ],
-            GMP: [
-                { limit: 120, dests: [
-                    { dest: "KIX", realMin: 100, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE2117", aircraft: "B737-900" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "HND", realMin: 125, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL92", aircraft: "B787-9" }] }
-                ]}
-            ],
-            PUS: [
-                { limit: 120, dests: [
-                    { dest: "FUK", realMin: 55, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE2131", aircraft: "B737-900" }] },
-                    { dest: "KIX", realMin: 90, airlines: [{ name: "チェジュ航空", code: "JJA", flightNum: "7C1352", aircraft: "B737-800" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "NRT", realMin: 125, airlines: [{ name: "エアプサン", code: "ABL", flightNum: "BX112", aircraft: "A321" }] },
-                    { dest: "TPE", realMin: 155, airlines: [{ name: "タイガーエア台湾", code: "TTW", flightNum: "IT607", aircraft: "A320" }] }
-                ]}
-            ],
-            TPE: [
-                { limit: 120, dests: [
-                    { dest: "HKG", realMin: 110, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX403", aircraft: "B777-300" }] },
-                    { dest: "OKA", realMin: 90, airlines: [{ name: "ピーチ", code: "APJ", flightNum: "MM922", aircraft: "A320" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "NRT", realMin: 190, airlines: [{ name: "チャインエアライン", code: "CAL", flightNum: "CI100", aircraft: "A350-900" }] },
-                    { dest: "KIX", realMin: 170, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR178", aircraft: "B787-10" }] },
-                    { dest: "SIN", realMin: 285, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ877", aircraft: "B787-10" }] },
-                    { dest: "BKK", realMin: 215, airlines: [{ name: "スターラックス航空", code: "SLA", flightNum: "JX741", aircraft: "A330neo" }] }
-                ]}
-            ],
-            KHH: [
-                { limit: 360, dests: [
-                    { dest: "NRT", realMin: 210, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR108", aircraft: "A321" }] },
-                    { dest: "KIX", realMin: 185, airlines: [{ name: "タイガーエア台湾", code: "TTW", flightNum: "IT284", aircraft: "A320" }] }
-                ]}
-            ],
-            HKG: [
-                { limit: 90, dests: [
-                    { dest: "TPE", realMin: 100, airlines: [{ name: "キャセイパシフィック航空", code: "CPA", flightNum: "CX400", aircraft: "A330" }, { name: "スターラックス航空", code: "SLA", flightNum: "JX206", aircraft: "A330neo" }] }
-                ]},
-                { limit: 180, dests: [
-                    { dest: "PVG", realMin: 165, airlines: [{ name: "上海航空", code: "CSH", flightNum: "FM846", aircraft: "A330" }] },
-                    { dest: "BKK", realMin: 180, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK385", aircraft: "A380-800" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "SIN", realMin: 240, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ861", aircraft: "B777-300ER" }] },
-                    { dest: "NRT", realMin: 270, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL26", aircraft: "B787-9" }, { name: "香港エクスプレス", code: "HKE", flightNum: "UO646", aircraft: "A320neo" }] }
-                ]}
-            ],
-            PEK: [
-                { limit: 120, dests: [
-                    { dest: "PVG", realMin: 130, airlines: [{ name: "中国国際航空", code: "CCA", flightNum: "CA1501", aircraft: "B777-300ER" }] },
-                    { dest: "ICN", realMin: 120, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ334", aircraft: "A321" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "HND", realMin: 210, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL860", aircraft: "B787-9" }] },
-                    { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ805", aircraft: "B777-300ER" }] }
-                ]}
-            ],
-            PVG: [
-                { limit: 120, dests: [
-                    { dest: "PEK", realMin: 135, airlines: [{ name: "中国東方航空", code: "CES", flightNum: "MU5101", aircraft: "A350-900" }] },
-                    { dest: "ICN", realMin: 120, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE894", aircraft: "A330-300" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "NRT", realMin: 175, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH922", aircraft: "B787-9" }] },
-                    { dest: "KIX", realMin: 135, airlines: [{ name: "吉祥航空", code: "DKH", flightNum: "HO1335", aircraft: "A321neo" }] },
-                    { dest: "SIN", realMin: 315, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ833", aircraft: "A380" }] }
-                ]}
-            ],
-            CAN: [
-                { limit: 120, dests: [
-                    { dest: "PVG", realMin: 130, airlines: [{ name: "中国南方航空", code: "CSN", flightNum: "CZ3523", aircraft: "A350-900" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "NRT", realMin: 250, airlines: [{ name: "中国南方航空", code: "CSN", flightNum: "CZ385", aircraft: "A350-900" }] },
-                    { dest: "SIN", realMin: 255, airlines: [{ name: "スクート", code: "TGW", flightNum: "TR101", aircraft: "A320neo" }] }
-                ]}
-            ],
-            SZX: [
-                { limit: 120, dests: [
-                    { dest: "PVG", realMin: 135, airlines: [{ name: "深セン航空", code: "CSZ", flightNum: "ZH9109", aircraft: "A330" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "NRT", realMin: 255, airlines: [{ name: "深セン航空", code: "CSZ", flightNum: "ZH9051", aircraft: "B737-800" }] },
-                    { dest: "SIN", realMin: 240, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ807", aircraft: "B777-300ER" }] }
-                ]}
-            ],
-            CTU: [
-                { limit: 120, dests: [
-                    { dest: "PEK", realMin: 150, airlines: [{ name: "中国国際航空", code: "CCA", flightNum: "CA1406", aircraft: "A330" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "NRT", realMin: 320, airlines: [{ name: "四川航空", code: "CSC", flightNum: "3U3961", aircraft: "A330" }] },
-                    { dest: "SIN", realMin: 290, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ843", aircraft: "B787-10" }] }
-                ]}
-            ],
-            HRB: [
-                { limit: 120, dests: [
-                    { dest: "PEK", realMin: 115, airlines: [{ name: "中国国際航空", code: "CCA", flightNum: "CA1640", aircraft: "B737-800" }] },
-                    { dest: "PVG", realMin: 170, airlines: [{ name: "中国東方航空", code: "CES", flightNum: "MU5614", aircraft: "A321" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "NRT", realMin: 185, airlines: [{ name: "スプリング・ジャパン", code: "SJP", flightNum: "IJ214", aircraft: "B737-800" }, { name: "中国南方航空", code: "CSN", flightNum: "CZ6085", aircraft: "A321" }] },
-                    { dest: "ICN", realMin: 140, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ340", aircraft: "A321" }] }
-                ]}
-            ],
-            BKK: [
-                { limit: 120, dests: [
-                    { dest: "HKT", realMin: 80, airlines: [{ name: "タイ・エアアジア", code: "AIQ", flightNum: "FD3001", aircraft: "A320" }] },
-                    { dest: "CNX", realMin: 75, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG110", aircraft: "B777-200ER" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "NRT", realMin: 360, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG642", aircraft: "A350-900" }] },
-                    { dest: "SIN", realMin: 145, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ705", aircraft: "A350-900" }] },
-                    { dest: "DEL", realMin: 260, airlines: [{ name: "エアインディア", code: "AIC", flightNum: "AI333", aircraft: "A320neo" }] }
-                ]}
-            ],
-            HKT: [
-                { limit: 120, dests: [
-                    { dest: "BKK", realMin: 85, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG202", aircraft: "B777-300ER" }] },
-                    { dest: "SIN", realMin: 110, airlines: [{ name: "ジェットスター・アジア", code: "JSA", flightNum: "3K534", aircraft: "A320" }] }
-                ]}
-            ],
-            CNX: [
-                { limit: 120, dests: [
-                    { dest: "BKK", realMin: 75, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG103", aircraft: "A350-900" }] }
-                ]}
-            ],
-            SIN: [
-                { limit: 90, dests: [
-                    { dest: "KUL", realMin: 60, airlines: [{ name: "マレーシア航空", code: "MAS", flightNum: "MH614", aircraft: "B737-800" }, { name: "エアアジア", code: "AXM", flightNum: "AK702", aircraft: "A320" }] }
-                ]},
-                { limit: 180, dests: [
-                    { dest: "BKK", realMin: 145, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ708", aircraft: "A350-900" }, { name: "ジェットスター・アジア", code: "JSA", flightNum: "3K511", aircraft: "A320" }] },
-                    { dest: "CGK", realMin: 110, airlines: [{ name: "ガルーダ・インドネシア航空", code: "GIA", flightNum: "GA825", aircraft: "B777-300ER" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "HKG", realMin: 245, airlines: [{ name: "キャセイパシフィック航空", code: "CPA", flightNum: "CX736", aircraft: "A350-900" }] },
-                    { dest: "HND", realMin: 360, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH842", aircraft: "B787-9" }] },
-                    { dest: "NRT", realMin: 360, airlines: [{ name: "ZIPAIR", code: "TZP", flightNum: "ZG54", aircraft: "B787-8" }] }
-                ]}
-            ],
-            KUL: [
-                { limit: 120, dests: [
-                    { dest: "SIN", realMin: 60, airlines: [{ name: "マレーシア航空", code: "MAS", flightNum: "MH611", aircraft: "B737-800" }] },
-                    { dest: "PEN", realMin: 55, airlines: [{ name: "エアアジア", code: "AXM", flightNum: "AK6112", aircraft: "A320" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "NRT", realMin: 360, airlines: [{ name: "マレーシア航空", code: "MAS", flightNum: "MH88", aircraft: "A350-900" }] },
-                    { dest: "TPE", realMin: 285, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR228", aircraft: "B777-300ER" }] }
-                ]}
-            ],
-            PEN: [
-                { limit: 120, dests: [
-                    { dest: "KUL", realMin: 55, airlines: [{ name: "マレーシア航空", code: "MAS", flightNum: "MH1145", aircraft: "B737-800" }] },
-                    { dest: "SIN", realMin: 85, airlines: [{ name: "スクート", code: "TGW", flightNum: "TR427", aircraft: "A320" }] }
-                ]}
-            ],
-            CGK: [
-                { limit: 120, dests: [
-                    { dest: "SIN", realMin: 110, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ957", aircraft: "B777-300ER" }] },
-                    { dest: "DPS", realMin: 115, airlines: [{ name: "ガルーダ・インドネシア", code: "GIA", flightNum: "GA404", aircraft: "A330-300" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "NRT", realMin: 360, airlines: [{ name: "ガルーダ・インドネシア", code: "GIA", flightNum: "GA874", aircraft: "B777-300ER" }] },
-                    { dest: "HKG", realMin: 300, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX776", aircraft: "A350-900" }] }
-                ]}
-            ],
-            DPS: [
-                { limit: 120, dests: [
-                    { dest: "CGK", realMin: 115, airlines: [{ name: "ガルーダ・インドネシア", code: "GIA", flightNum: "GA407", aircraft: "B777-300ER" }] },
-                    { dest: "SIN", realMin: 160, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ939", aircraft: "B787-10" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "SYD", realMin: 360, airlines: [{ name: "カンタス航空", code: "QFA", flightNum: "QF44", aircraft: "B737-800" }] }
-                ]}
-            ],
-            MNL: [
-                { limit: 120, dests: [
-                    { dest: "CEB", realMin: 85, airlines: [{ name: "セブパシフィック航空", code: "CEB", flightNum: "5J561", aircraft: "A321neo" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "NRT", realMin: 260, airlines: [{ name: "フィリピン航空", code: "PAL", flightNum: "PR428", aircraft: "B777-300ER" }] },
-                    { dest: "SIN", realMin: 220, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ915", aircraft: "B787-10" }] }
-                ]}
-            ],
-            CEB: [
-                { limit: 120, dests: [
-                    { dest: "MNL", realMin: 85, airlines: [{ name: "フィリピン航空", code: "PAL", flightNum: "PR1842", aircraft: "A321" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "NRT", realMin: 285, airlines: [{ name: "フィリピン航空", code: "PAL", flightNum: "PR434", aircraft: "A321" }] }
-                ]}
-            ],
-            DEL: [
-                { limit: 360, dests: [
-                    { dest: "SIN", realMin: 350, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ403", aircraft: "A350-900" }] },
-                    { dest: "DXB", realMin: 210, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK511", aircraft: "B777-300ER" }] },
-                    { dest: "BKK", realMin: 245, airlines: [{ name: "エアインディア", code: "AIC", flightNum: "AI332", aircraft: "A320" }] }
-                ]}
-            ],
-            SGN: [
-                { limit: 120, dests: [
-                    { dest: "DAD", realMin: 80, airlines: [{ name: "ベトナム航空", code: "HVN", flightNum: "VN120", aircraft: "A321" }] },
-                    { dest: "BKK", realMin: 90, airlines: [{ name: "タイ・ベトジェット", code: "TVJ", flightNum: "VZ971", aircraft: "A320" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "NRT", realMin: 320, airlines: [{ name: "ベトナム航空", code: "HVN", flightNum: "VN300", aircraft: "B787-9" }] },
-                    { dest: "SIN", realMin: 125, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ177", aircraft: "A350-900" }] }
-                ]}
-            ],
-            DAD: [
-                { limit: 120, dests: [
-                    { dest: "SGN", realMin: 80, airlines: [{ name: "ベトナム航空", code: "HVN", flightNum: "VN123", aircraft: "A321" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "NRT", realMin: 300, airlines: [{ name: "ベトナム航空", code: "HVN", flightNum: "VN318", aircraft: "A321" }] }
-                ]}
-            ],
-            SYD: [
-                { limit: 120, dests: [
-                    { dest: "MEL", realMin: 95, airlines: [{ name: "カンタス航空", code: "QFA", flightNum: "QF401", aircraft: "A330-200" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ232", aircraft: "A380" }] },
-                    { dest: "HND", realMin: 360, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH880", aircraft: "B787-9" }] }
-                ]}
-            ],
-            MEL: [
-                { limit: 120, dests: [
-                    { dest: "SYD", realMin: 85, airlines: [{ name: "カンタス航空", code: "QFA", flightNum: "QF422", aircraft: "B737-800" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ238", aircraft: "B777-300ER" }] }
-                ]}
-            ],
-            LHR: [
-                { limit: 90, dests: [
-                    { dest: "CDG", realMin: 70, airlines: [{ name: "エールフランス航空", code: "AFR", flightNum: "AF1681", aircraft: "A321" }, { name: "イージージェット", code: "EZY", flightNum: "U28424", aircraft: "A320" }] },
-                    { dest: "FRA", realMin: 90, airlines: [{ name: "ルフトハンザ航空", code: "DLH", flightNum: "LH901", aircraft: "A321" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "JFK", realMin: 360, airlines: [{ name: "ヴァージン・アトランティック", code: "VIR", flightNum: "VS3", aircraft: "A350-1000" }, { name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA113", aircraft: "B777-300ER" }] },
-                    { dest: "DXB", realMin: 340, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK2", aircraft: "A380-800" }] },
-                    { dest: "HND", realMin: 360, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL44", aircraft: "A350-1000" }, { name: "全日本空輸", code: "ANA", flightNum: "NH212", aircraft: "B777-300ER" }] }
-                ]}
-            ],
-            LGW: [
-                { limit: 120, dests: [
-                    { dest: "CDG", realMin: 70, airlines: [{ name: "イージージェット", code: "EZY", flightNum: "U28424", aircraft: "A320" }] },
-                    { dest: "AMS", realMin: 75, airlines: [{ name: "イージージェット", code: "EZY", flightNum: "U28867", aircraft: "A320" }] }
-                ]}
-            ],
-            CDG: [
-                { limit: 120, dests: [
-                    { dest: "LHR", realMin: 80, airlines: [{ name: "エールフランス航空", code: "AFR", flightNum: "AF1680", aircraft: "A320" }] },
-                    { dest: "FRA", realMin: 75, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH1031", aircraft: "A320neo" }] },
-                    { dest: "AMS", realMin: 75, airlines: [{ name: "エールフランス航空", code: "AFR", flightNum: "AF1240", aircraft: "A321" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "JFK", realMin: 360, airlines: [{ name: "エールフランス航空", code: "AFR", flightNum: "AF006", aircraft: "B777-300ER" }] },
-                    { dest: "DXB", realMin: 360, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK74", aircraft: "A380" }] }
-                ]}
-            ],
-            ORY: [
-                { limit: 120, dests: [
-                    { dest: "MAD", realMin: 120, airlines: [{ name: "イベリア航空", code: "IBE", flightNum: "IB3435", aircraft: "A320neo" }] },
-                    { dest: "FCO", realMin: 115, airlines: [{ name: "イージージェット", code: "EZY", flightNum: "U24251", aircraft: "A320" }] }
-                ]}
-            ],
-            FRA: [
-                { limit: 120, dests: [
-                    { dest: "LHR", realMin: 100, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH902", aircraft: "A321" }] },
-                    { dest: "CDG", realMin: 75, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH1034", aircraft: "A320" }] },
-                    { dest: "ZRH", realMin: 50, airlines: [{ name: "スイス航空", code: "SWR", flightNum: "LX1069", aircraft: "A220" }] },
-                    { dest: "MUC", realMin: 55, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH100", aircraft: "A320" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "JFK", realMin: 360, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH400", aircraft: "B747-8" }] },
-                    { dest: "DXB", realMin: 360, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH630", aircraft: "A330-300" }] }
-                ]}
-            ],
-            MUC: [
-                { limit: 120, dests: [
-                    { dest: "FRA", realMin: 55, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH101", aircraft: "A320" }] },
-                    { dest: "FCO", realMin: 95, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH1842", aircraft: "A320" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "JFK", realMin: 360, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH410", aircraft: "A350-900" }] }
-                ]}
-            ],
-            AMS: [
-                { limit: 120, dests: [
-                    { dest: "LHR", realMin: 75, airlines: [{ name: "KLMオランダ航空", code: "KLM", flightNum: "KL1007", aircraft: "B737-800" }] },
-                    { dest: "CDG", realMin: 75, airlines: [{ name: "KLMオランダ航空", code: "KLM", flightNum: "KL1227", aircraft: "E190" }] },
-                    { dest: "FRA", realMin: 65, airlines: [{ name: "KLMオランダ航空", code: "KLM", flightNum: "KL1765", aircraft: "B737-700" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "JFK", realMin: 360, airlines: [{ name: "KLMオランダ航空", code: "KLM", flightNum: "KL641", aircraft: "B787-10" }] }
-                ]}
-            ],
-            ZRH: [
-                { limit: 120, dests: [
-                    { dest: "LHR", realMin: 105, airlines: [{ name: "スイス航空", code: "SWR", flightNum: "LX318", aircraft: "A321" }] },
-                    { dest: "CDG", realMin: 75, airlines: [{ name: "スイス航空", code: "SWR", flightNum: "LX632", aircraft: "A220" }] }
-                ]}
-            ],
-            FCO: [
-                { limit: 120, dests: [
-                    { dest: "MUC", realMin: 95, airlines: [{ name: "ITAエアウェイズ", code: "ITY", flightNum: "AZ436", aircraft: "A320" }] },
-                    { dest: "CDG", realMin: 125, airlines: [{ name: "エールフランス航空", code: "AFR", flightNum: "AF1305", aircraft: "A321" }] }
-                ]}
-            ],
-            MXP: [
-                { limit: 120, dests: [
-                    { dest: "CDG", realMin: 85, airlines: [{ name: "イージージェット", code: "EZY", flightNum: "U22781", aircraft: "A320" }] },
-                    { dest: "LHR", realMin: 120, airlines: [{ name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA573", aircraft: "A320neo" }] }
-                ]}
-            ],
-            MAD: [
-                { limit: 120, dests: [
-                    { dest: "BCN", realMin: 75, airlines: [{ name: "イベリア航空", code: "IBE", flightNum: "IB3014", aircraft: "A320neo" }] },
-                    { dest: "ORY", realMin: 120, airlines: [{ name: "イベリア航空", code: "IBE", flightNum: "IB3436", aircraft: "A321" }] },
-                    { dest: "LHR", realMin: 145, airlines: [{ name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA461", aircraft: "A320" }] }
-                ]}
-            ],
-            BCN: [
-                { limit: 120, dests: [
-                    { dest: "MAD", realMin: 80, airlines: [{ name: "ブエリング航空", code: "VLG", flightNum: "VY1002", aircraft: "A320" }] },
-                    { dest: "CDG", realMin: 105, airlines: [{ name: "イージージェット", code: "EZY", flightNum: "U22782", aircraft: "A320" }] }
-                ]}
-            ],
-            CPH: [
-                { limit: 120, dests: [
-                    { dest: "AMS", realMin: 85, airlines: [{ name: "スカンジナビア航空", code: "SAS", flightNum: "SK547", aircraft: "A320neo" }] },
-                    { dest: "FRA", realMin: 85, airlines: [{ name: "スカンジナビア航空", code: "SAS", flightNum: "SK639", aircraft: "A320neo" }] }
-                ]}
-            ],
-            HEL: [
-                { limit: 120, dests: [
-                    { dest: "CPH", realMin: 100, airlines: [{ name: "フィンエアー", code: "FIN", flightNum: "AY951", aircraft: "A321" }] }
-                ]}
-            ],
-            IST: [
-                { limit: 120, dests: [
-                    { dest: "FCO", realMin: 160, airlines: [{ name: "ターキッシュエアラインズ", code: "THY", flightNum: "TK1865", aircraft: "A321" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "LHR", realMin: 245, airlines: [{ name: "ターキッシュエアラインズ", code: "THY", flightNum: "TK1985", aircraft: "A330-300" }] },
-                    { dest: "DXB", realMin: 260, airlines: [{ name: "ターキッシュエアラインズ", code: "THY", flightNum: "TK762", aircraft: "A350-900" }] }
-                ]}
-            ],
-            DXB: [
-                { limit: 120, dests: [
-                    { dest: "DOH", realMin: 70, airlines: [{ name: "カタール航空", code: "QTR", flightNum: "QR1003", aircraft: "B777-300ER" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "LHR", realMin: 360, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK1", aircraft: "A380" }] },
-                    { dest: "CDG", realMin: 360, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK73", aircraft: "A380" }] },
-                    { dest: "DEL", realMin: 185, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK510", aircraft: "B777-300ER" }] }
-                ]}
-            ],
-            AUH: [
-                { limit: 120, dests: [
-                    { dest: "DOH", realMin: 70, airlines: [{ name: "エティハド航空", code: "ETD", flightNum: "EY393", aircraft: "A320" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "LHR", realMin: 360, airlines: [{ name: "エティハド航空", code: "ETD", flightNum: "EY19", aircraft: "B787-9" }] },
-                    { dest: "CDG", realMin: 360, airlines: [{ name: "エティハド航空", code: "ETD", flightNum: "EY31", aircraft: "B787-9" }] }
-                ]}
-            ],
-            DOH: [
-                { limit: 120, dests: [
-                    { dest: "DXB", realMin: 70, airlines: [{ name: "カタール航空", code: "QTR", flightNum: "QR1018", aircraft: "B777-300ER" }] },
-                    { dest: "AUH", realMin: 70, airlines: [{ name: "カタール航空", code: "QTR", flightNum: "QR1054", aircraft: "A320" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "LHR", realMin: 360, airlines: [{ name: "カタール航空", code: "QTR", flightNum: "QR7", aircraft: "A380" }] },
-                    { dest: "CDG", realMin: 360, airlines: [{ name: "カタール航空", code: "QTR", flightNum: "QR39", aircraft: "B787-9" }] }
-                ]}
-            ],
-            CAI: [
-                { limit: 120, dests: [
-                    { dest: "DXB", realMin: 210, airlines: [{ name: "エジプト航空", code: "MSR", flightNum: "MS912", aircraft: "B737-800" }] },
-                    { dest: "IST", realMin: 135, airlines: [{ name: "ターキッシュエアラインズ", code: "THY", flightNum: "TK691", aircraft: "A321" }] }
-                ]}
-            ],
-            JFK: [
-                { limit: 90, dests: [
-                    { dest: "BOS", realMin: 70, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2210", aircraft: "E175" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "LAX", realMin: 350, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA3", aircraft: "A321T" }] },
-                    { dest: "LHR", realMin: 360, airlines: [{ name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA112", aircraft: "B777-300ER" }] },
-                    { dest: "HND", realMin: 360, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL5", aircraft: "A350-1000" }] }
-                ]}
-            ],
-            EWR: [
-                { limit: 120, dests: [
-                    { dest: "ORD", realMin: 150, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1205", aircraft: "B737-900" }] },
-                    { dest: "BOS", realMin: 75, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2412", aircraft: "B737-800" }] }
-                ]}
-            ],
-            LGA: [
-                { limit: 120, dests: [
-                    { dest: "ORD", realMin: 155, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA312", aircraft: "B737-800" }] },
-                    { dest: "BOS", realMin: 75, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL5689", aircraft: "E175" }] }
-                ]}
-            ],
-            LAX: [
-                { limit: 90, dests: [
-                    { dest: "SFO", realMin: 85, airlines: [{ name: "アラスカ航空", code: "ASA", flightNum: "AS3315", aircraft: "E175" }, { name: "ユナイテッド航空", code: "UAL", flightNum: "UA2042", aircraft: "B737-900" }] }
-                ]},
-                { limit: 240, dests: [
-                    { dest: "ORD", realMin: 240, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA302", aircraft: "B737-900" }, { name: "サウスウエスト航空", code: "SWA", flightNum: "WN415", aircraft: "B737-700" }] },
-                    { dest: "SEA", realMin: 170, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL1144", aircraft: "A220" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "JFK", realMin: 350, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL301", aircraft: "B767-400ER" }] },
-                    { dest: "HND", realMin: 360, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL61", aircraft: "B787-9" }, { name: "全日本空輸", code: "ANA", flightNum: "NH105", aircraft: "B777-300ER" }] }
-                ]}
-            ],
-            SFO: [
-                { limit: 120, dests: [
-                    { dest: "LAX", realMin: 90, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2045", aircraft: "B737-900" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "JFK", realMin: 345, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA531", aircraft: "B757-200" }] },
-                    { dest: "ORD", realMin: 255, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA431", aircraft: "B777-200" }] },
-                    { dest: "HND", realMin: 360, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH107", aircraft: "B777-300ER" }] }
-                ]}
-            ],
-            ORD: [
-                { limit: 120, dests: [
-                    { dest: "LGA", realMin: 130, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA1201", aircraft: "B737-800" }] },
-                    { dest: "EWR", realMin: 125, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2354", aircraft: "B737-900" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "LAX", realMin: 260, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1214", aircraft: "B737-900" }] },
-                    { dest: "SFO", realMin: 275, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2314", aircraft: "B737-800" }] }
-                ]}
-            ],
-            DFW: [
-                { limit: 120, dests: [
-                    { dest: "ORD", realMin: 145, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2355", aircraft: "B737-800" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "LAX", realMin: 195, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2411", aircraft: "B787-8" }] },
-                    { dest: "JFK", realMin: 210, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA1402", aircraft: "B737-800" }] }
-                ]}
-            ],
-            ATL: [
-                { limit: 120, dests: [
-                    { dest: "MIA", realMin: 115, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL1123", aircraft: "B757-200" }] },
-                    { dest: "ORD", realMin: 120, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL2344", aircraft: "B737-900" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "LAX", realMin: 290, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL324", aircraft: "B767-300ER" }] },
-                    { dest: "JFK", realMin: 145, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL2014", aircraft: "B737-900" }] }
-                ]}
-            ],
-            MIA: [
-                { limit: 120, dests: [
-                    { dest: "ATL", realMin: 115, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2114", aircraft: "B737-800" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "JFK", realMin: 185, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2445", aircraft: "B777-200ER" }] },
-                    { dest: "ORD", realMin: 190, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA1204", aircraft: "B737-800" }] }
-                ]}
-            ],
-            SEA: [
-                { limit: 120, dests: [
-                    { dest: "YVR", realMin: 55, airlines: [{ name: "アラスカ航空", code: "ASA", flightNum: "AS2414", aircraft: "E175" }] },
-                    { dest: "SFO", realMin: 130, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL4104", aircraft: "B737-800" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "LAX", realMin: 165, airlines: [{ name: "アラスカ航空", code: "ASA", flightNum: "AS1120", aircraft: "B737-900" }] },
-                    { dest: "ORD", realMin: 245, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2411", aircraft: "B737-900" }] }
-                ]}
-            ],
-            IAH: [
-                { limit: 120, dests: [
-                    { dest: "DFW", realMin: 70, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA4312", aircraft: "ERJ-145" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "LGA", realMin: 210, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1140", aircraft: "B737-900" }] },
-                    { dest: "LAX", realMin: 215, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2145", aircraft: "B737-900" }] }
-                ]}
-            ],
-            DEN: [
-                { limit: 120, dests: [
-                    { dest: "ORD", realMin: 145, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1102", aircraft: "B737-900" }] },
-                    { dest: "SFO", realMin: 155, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1244", aircraft: "B737-800" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "LAX", realMin: 145, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2310", aircraft: "B737-900" }] },
-                    { dest: "JFK", realMin: 235, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2414", aircraft: "B737-900" }] }
-                ]}
-            ],
-            BOS: [
-                { limit: 120, dests: [
-                    { dest: "JFK", realMin: 75, airlines: [{ name: "ジェットブルー", code: "JBU", flightNum: "B6301", aircraft: "A320" }] },
-                    { dest: "LGA", realMin: 75, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL5678", aircraft: "E175" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "LAX", realMin: 360, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1201", aircraft: "B737-900" }] }
-                ]}
-            ],
-            YVR: [
-                { limit: 120, dests: [
-                    { dest: "SEA", realMin: 55, airlines: [{ name: "エア・カナダ", code: "ACA", flightNum: "AC8091", aircraft: "DH8D" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "LAX", realMin: 180, airlines: [{ name: "エア・カナダ", code: "ACA", flightNum: "AC554", aircraft: "A220-300" }] },
-                    { dest: "JFK", realMin: 315, airlines: [{ name: "ジェットブルー", code: "JBU", flightNum: "B62301", aircraft: "A320" }] }
-                ]}
-            ],
-
-            // 航空自衛隊 連絡連絡便
-            RJT: [
-                { limit: 120, dests: [
-                    { dest: "NKM", realMin: 50, airlines: [{ name: "航空自衛隊", code: "JSF", flightNum: "COSMO 01", aircraft: "C-1" }, { name: "航空自衛隊", code: "JSF", flightNum: "COSMO 11", aircraft: "C-2" }] },
-                    { dest: "YGJ", realMin: 80, airlines: [{ name: "航空自衛隊", code: "JSF", flightNum: "MESSENGER 31", aircraft: "C-2" }] }
-                ]}
-            ],
-            NKM: [
-                { limit: 120, dests: [
-                    { dest: "RJT", realMin: 50, airlines: [{ name: "航空自衛隊", code: "JSF", flightNum: "COSMO 02", aircraft: "C-130H" }] },
-                    { dest: "YGJ", realMin: 65, airlines: [{ name: "航空自衛隊", code: "JSF", flightNum: "COSMO 12", aircraft: "C-2" }] }
-                ]}
-            ],
-            YGJ: [
-                { limit: 120, dests: [
-                    { dest: "RJT", realMin: 80, airlines: [{ name: "航空自衛隊", code: "MESSENGER 32", aircraft: "C-2" }] }
-                ]}
-            ],
-
-            // 米海軍・米海兵隊 艦載機退避フライト (CVN-73 ＆ LHA-7)
-            CVN73: [
-                { limit: 120, dests: [
-                    { dest: "RJTA", realMin: 45, airlines: [
-                        { name: "米海軍第5空母航空団", code: "USN", flightNum: "TALON 11", aircraft: "MH-60R" },
-                        { name: "米海軍第5空母航空団", code: "USN", flightNum: "SABER 21", aircraft: "MH-60S" }
+            // 時間スロット別・実在路線の動的多角化データベース
+            FLIGHT_ROUTING_DATABASE: {
+                HND: [
+                    { limit: 45, dests: [
+                        { dest: "ITM", realMin: 75, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL115", aircraft: "B787-8" }, { name: "全日本空輸", code: "ANA", flightNum: "NH25", aircraft: "B777-200" }] },
+                        { dest: "NGO", realMin: 60, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH86", aircraft: "B737-800" }] },
+                        { dest: "KIJ", realMin: 60, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1857", aircraft: "Q400" }] }
+                    ]},
+                    { limit: 120, dests: [
+                        { dest: "FUK", realMin: 110, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL313", aircraft: "A350-900" }, { name: "全日本空輸", code: "ANA", flightNum: "NH243", aircraft: "B787-9" }] },
+                        { dest: "CTS", realMin: 95, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL513", aircraft: "A350-900" }, { name: "全日本空輸", code: "ANA", flightNum: "NH65", aircraft: "B777-300" }] },
+                        { dest: "KOJ", realMin: 105, airlines: [{ name: "スカイマーク", code: "SKY", flightNum: "BC303", aircraft: "B737-800" }] },
+                        { dest: "OKA", realMin: 150, airlines: [{ name: "ソラシドエア", code: "SNJ", flightNum: "SNJ67", aircraft: "B737-800" }] },
+                        { dest: "ITM", realMin: 70, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL127", aircraft: "B787-8" }] }
+                    ]},
+                    { limit: 180, dests: [
+                        { dest: "ICN", realMin: 155, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ177", aircraft: "A330-300" }, { name: "大韓航空", code: "KAL", flightNum: "KE2102", aircraft: "A321neo" }] },
+                        { dest: "GMP", realMin: 145, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL91", aircraft: "B787-9" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "SGN", realMin: 360, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL759", aircraft: "B787-9" }] },
+                        { dest: "BKK", realMin: 355, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG683", aircraft: "A350-900" }, { name: "全日本空輸", code: "ANA", flightNum: "NH847", aircraft: "B787-9" }] }
                     ]}
-                ]},
-                { limit: 360, dests: [
-                    { dest: "RJOI", realMin: 70, airlines: [
-                        { name: "米海軍第5空母航空団", code: "USN", flightNum: "CHIPPY 01", aircraft: "F/A-18" },
-                        { name: "米海軍第5空母航空団", code: "USN", flightNum: "MACE 33", aircraft: "F-35C" },
-                        { name: "米海軍第5空母航空団", code: "USN", flightNum: "OUTLAW 61", aircraft: "EA-18G" },
-                        { name: "米海軍第5空母航空団", code: "USN", flightNum: "LIBERTY 02", aircraft: "E-2D" }
+                ],
+                NRT: [
+                    { limit: 90, dests: [
+                        { dest: "CTS", realMin: 95, airlines: [{ name: "ピーチ・アビエーション", code: "APJ", flightNum: "MM563", aircraft: "A320" }, { name: "ジェットスター・ジャパン", code: "JJP", flightNum: "GK111", aircraft: "A321neo" }] },
+                        { dest: "ITM", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH3239", aircraft: "B737-800" }] }
+                    ]},
+                    { limit: 120, dests: [
+                        { dest: "FUK", realMin: 120, airlines: [{ name: "ピーチ・アビエーション", code: "APJ", flightNum: "MM525", aircraft: "A320" }] },
+                        { dest: "CTS", realMin: 100, airlines: [{ name: "スプリング・ジャパン", code: "SJP", flightNum: "IJ823", aircraft: "B737-800" }] }
+                    ]},
+                    { limit: 180, dests: [
+                        { dest: "ICN", realMin: 160, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE704", aircraft: "B777-300ER" }] },
+                        { dest: "TPE", realMin: 215, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR197", aircraft: "B787-10" }] },
+                        { dest: "PUS", realMin: 130, airlines: [{ name: "チェジュ航空", code: "JJA", flightNum: "7C1153", aircraft: "B737-800" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "BKK", realMin: 360, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG643", aircraft: "A350-900" }] },
+                        { dest: "SIN", realMin: 355, airlines: [{ name: "スクート", code: "TGW", flightNum: "TR809", aircraft: "B787-9" }, { name: "ZIPAIR", code: "TZP", flightNum: "ZG53", aircraft: "B787-8" }] },
+                        { dest: "CAN", realMin: 310, airlines: [{ name: "中国南方航空", code: "CSN", flightNum: "CZ386", aircraft: "A350-900" }] }
                     ]}
-                ]}
-            ],
-            LHA7: [
-                { limit: 120, dests: [
-                    { dest: "ROTM", realMin: 90, airlines: [{ name: "米海兵隊第31海兵遠征部隊", code: "USM", flightNum: "DRAGON 01", aircraft: "MV-22" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "RJOI", realMin: 80, airlines: [{ name: "米海兵隊第31海兵遠征部隊", code: "USM", flightNum: "BAT 51", aircraft: "F-35B" }] }
-                ]}
-            ],
-            ROTM: [
-                { limit: 120, dests: [
-                    { dest: "LHA7", realMin: 90, airlines: [{ name: "米海兵隊第31海兵遠征部隊", code: "USM", flightNum: "DRAGON 02", aircraft: "MV-22" }] }
-                ]},
-                { limit: 360, dests: [
-                    { dest: "RJOI", realMin: 100, airlines: [{ name: "米海兵隊", code: "USM", flightNum: "SUMO 91", aircraft: "C-130H" }] }
-                ]}
-            ]
-        };
+                ],
+                ITM: [
+                    { limit: 90, dests: [
+                        { dest: "HND", realMin: 70, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL112", aircraft: "B787-8" }, { name: "全日本空輸", code: "ANA", flightNum: "NH18", aircraft: "B777-200" }] },
+                        { dest: "KIJ", realMin: 65, airlines: [{ name: "アイベックスエアラインズ", code: "IBX", flightNum: "FW73", aircraft: "CRJ-700" }, { name: "日本航空", code: "JAL", flightNum: "JL2241", aircraft: "E170" }] }
+                    ]},
+                    { limit: 120, dests: [
+                        { dest: "HND", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH30", aircraft: "B787-9" }] },
+                        { dest: "FUK", realMin: 85, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL2055", aircraft: "E190" }] }
+                    ]},
+                    { limit: 180, dests: [
+                        { dest: "CTS", realMin: 110, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH775", aircraft: "B787-8" }] },
+                        { dest: "FUK", realMin: 75, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL2053", aircraft: "E190" }] }
+                    ]}
+                ],
+                KIX: [
+                    { limit: 120, dests: [
+                        { dest: "HND", realMin: 70, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL224", aircraft: "B787-8" }] },
+                        { dest: "OKA", realMin: 120, airlines: [{ name: "ピーチ", code: "APJ", flightNum: "MM211", aircraft: "A320" }, { name: "日本トランスオーシャン航空", code: "JTA", flightNum: "JTA005", aircraft: "B737-800" }] },
+                        { dest: "CTS", realMin: 115, airlines: [{ name: "ピーチ", code: "APJ", flightNum: "MM103", aircraft: "A320" }] },
+                        { dest: "NRT", realMin: 85, airlines: [{ name: "ジェットスター・ジャパン", code: "JJP", flightNum: "GK204", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "TPE", realMin: 170, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR131", aircraft: "B777-300ER" }] },
+                        { dest: "HKG", realMin: 240, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX503", aircraft: "B777-300" }] },
+                        { dest: "ICN", realMin: 110, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE724", aircraft: "A330-300" }] },
+                        { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ619", aircraft: "B787-10" }] }
+                    ]}
+                ],
+                FUK: [
+                    { limit: 120, dests: [
+                        { dest: "HND", realMin: 95, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH250", aircraft: "B787-9" }, { name: "日本航空", code: "JAL", flightNum: "JL322", aircraft: "A350-900" }] },
+                        { dest: "ITM", realMin: 75, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL2050", aircraft: "E190" }] },
+                        { dest: "OKA", realMin: 100, airlines: [{ name: "ソラシドエア", code: "SNJ", flightNum: "SNJ81", aircraft: "B737-800" }] },
+                        { dest: "KIX", realMin: 70, airlines: [{ name: "スターフライヤー", code: "SFJ", flightNum: "SFJ24", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "TPE", realMin: 155, airlines: [{ name: "スターラックス航空", code: "SLA", flightNum: "JX841", aircraft: "A330neo" }] },
+                        { dest: "ICN", realMin: 85, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ131", aircraft: "A321" }] },
+                        { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ655", aircraft: "B787-10" }] }
+                    ]}
+                ],
+                CTS: [
+                    { limit: 90, dests: [
+                        { dest: "KIJ", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1858", aircraft: "Q400" }] }
+                    ]},
+                    { limit: 120, dests: [
+                        { dest: "HND", realMin: 95, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH68", aircraft: "B777-300" }] },
+                        { dest: "KIX", realMin: 130, airlines: [{ name: "ピーチ・アビエーション", code: "APJ", flightNum: "MM214", aircraft: "A320" }] }
+                    ]},
+                    { limit: 180, dests: [
+                        { dest: "HND", realMin: 95, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL514", aircraft: "A350-900" }] },
+                        { dest: "NRT", realMin: 95, airlines: [{ name: "スプリング・ジャパン", code: "SJP", flightNum: "IJ832", aircraft: "B737-800" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "ICN", realMin: 190, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE766", aircraft: "B737-900" }] }
+                    ]}
+                ],
+                OKA: [
+                    { limit: 120, dests: [
+                        { dest: "FUK", realMin: 100, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL3606", aircraft: "B737-800" }, { name: "全日本空輸", code: "ANA", flightNum: "NH1206", aircraft: "B767-300" }] },
+                        { dest: "ITM", realMin: 115, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH764", aircraft: "B787-8" }] },
+                        { dest: "NGO", realMin: 120, airlines: [{ name: "スカイマーク", code: "SKY", flightNum: "BC552", aircraft: "B737-800" }] },
+                        { dest: "KIX", realMin: 120, airlines: [{ name: "ジェットスター・ジャパン", code: "JJP", flightNum: "GK384", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "HND", realMin: 140, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL902", aircraft: "A350-900" }] },
+                        { dest: "TPE", realMin: 95, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR113", aircraft: "A321" }] },
+                        { dest: "ICN", realMin: 135, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ171", aircraft: "A321neo" }] }
+                    ]}
+                ],
+                KIJ: [
+                    { limit: 90, dests: [
+                        { dest: "ITM", realMin: 70, airlines: [{ name: "アイベックス", code: "IBX", flightNum: "FW74", aircraft: "CRJ-700" }] },
+                        { dest: "CTS", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1857", aircraft: "Q400" }] }
+                    ]},
+                    { limit: 120, dests: [
+                        { dest: "ITM", realMin: 65, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1662", aircraft: "Q400" }] },
+                        { dest: "CTS", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1859", aircraft: "Q400" }] }
+                    ]},
+                    { limit: 180, dests: [
+                        { dest: "FUK", realMin: 120, airlines: [{ name: "アイベックス", code: "IBX", flightNum: "FW84", aircraft: "CRJ-700" }] },
+                        { dest: "ICN", realMin: 155, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE764", aircraft: "B737-900" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "TPE", realMin: 220, airlines: [{ name: "タイガーエア台湾", code: "TTW", flightNum: "IT229", aircraft: "A320" }] }
+                    ]}
+                ],
+                UKB: [
+                    { limit: 120, dests: [
+                        { dest: "HND", realMin: 70, airlines: [{ name: "スカイマーク", code: "SKY", flightNum: "BC102", aircraft: "B737-800" }, { name: "スカイマーク", code: "SKY", flightNum: "BC116", aircraft: "B737-800" }] },
+                        { dest: "CTS", realMin: 110, airlines: [{ name: "スカイマーク", code: "SKY", flightNum: "BC171", aircraft: "B737-800" }, { name: "スカイマーク", code: "SKY", flightNum: "BC177", aircraft: "B737-800" }] },
+                        { dest: "OKA", realMin: 125, airlines: [{ name: "スカイマーク", code: "SKY", flightNum: "BC591", aircraft: "B737-800" }, { name: "ソラシドエア", code: "SNJ", flightNum: "SNJ123", aircraft: "B737-800" }] }
+                    ]}
+                ],
+                NGO: [
+                    { limit: 120, dests: [
+                        { dest: "HND", realMin: 60, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH86", aircraft: "B737-800" }] },
+                        { dest: "CTS", realMin: 100, airlines: [{ name: "AIRDO", code: "ADO", flightNum: "ADO127", aircraft: "B737-700" }, { name: "日本航空", code: "JAL", flightNum: "JL3105", aircraft: "B737-800" }] },
+                        { dest: "FUK", realMin: 85, airlines: [{ name: "スターフライヤー", code: "SFJ", flightNum: "SFJ31", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "TPE", realMin: 195, airlines: [{ name: "チャイナエアライン", code: "CAL", flightNum: "CI151", aircraft: "A330-300" }] },
+                        { dest: "HKG", realMin: 255, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX531", aircraft: "A350-900" }] },
+                        { dest: "SIN", realMin: 365, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ671", aircraft: "B787-10" }] }
+                    ]}
+                ],
+                KOJ: [
+                    { limit: 120, dests: [
+                        { dest: "HND", realMin: 100, airlines: [{ name: "ソラシドエア", code: "SNJ", flightNum: "SNJ74", aircraft: "B737-800" }, { name: "全日本空輸", code: "ANA", flightNum: "NH628", aircraft: "B787-8" }] },
+                        { dest: "ITM", realMin: 75, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL2402", aircraft: "E190" }, { name: "日本航空", code: "JAL", flightNum: "JL2410", aircraft: "E190" }] },
+                        { dest: "NGO", realMin: 85, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH352", aircraft: "B737-800" }] },
+                        { dest: "KIX", realMin: 70, airlines: [{ name: "ピーチ・アビエーション", code: "APJ", flightNum: "MM192", aircraft: "A320" }] }
+                    ]}
+                ],
+                KMJ: [
+                    { limit: 120, dests: [
+                        { dest: "HND", realMin: 100, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL622", aircraft: "B767-300" }, { name: "日本航空", code: "JAL", flightNum: "JL634", aircraft: "B767-300" }] },
+                        { dest: "ITM", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1626", aircraft: "Q400" }] },
+                        { dest: "NGO", realMin: 80, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH332", aircraft: "B737-800" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "TPE", realMin: 140, airlines: [{ name: "チャイナエアライン", code: "CAL", flightNum: "CI195", aircraft: "A321neo" }] }
+                    ]}
+                ],
+                MYJ: [
+                    { limit: 120, dests: [
+                        { dest: "HND", realMin: 80, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL432", aircraft: "B737-800" }, { name: "全日本空輸", code: "ANA", flightNum: "NH596", aircraft: "B787-8" }] },
+                        { dest: "ITM", realMin: 50, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1632", aircraft: "Q400" }, { name: "日本航空", code: "JAL", flightNum: "JL2306", aircraft: "E170" }] },
+                        { dest: "FUK", realMin: 50, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL3602", aircraft: "E170" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "ICN", realMin: 105, airlines: [{ name: "チェジュ航空", code: "JJA", flightNum: "7C1481", aircraft: "B737-800" }] }
+                    ]}
+                ],
+                NGS: [
+                    { limit: 120, dests: [
+                        { dest: "HND", realMin: 95, airlines: [{ name: "ソラシドエア", code: "SNJ", flightNum: "SNJ32", aircraft: "B737-800" }, { name: "日本航空", code: "JAL", flightNum: "JL616", aircraft: "B767-300" }] },
+                        { dest: "ITM", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1660", aircraft: "Q400" }] },
+                        { dest: "NGO", realMin: 85, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH372", aircraft: "B737-800" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "HND", realMin: 95, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL606", aircraft: "B767-300" }] }
+                    ]}
+                ],
+                SDJ: [
+                    { limit: 120, dests: [
+                        { dest: "CTS", realMin: 75, airlines: [{ name: "ピーチ", code: "APJ", flightNum: "MM413", aircraft: "A320" }, { name: "日本航空", code: "JAL", flightNum: "JL2905", aircraft: "E170" }] },
+                        { dest: "ITM", realMin: 80, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL2202", aircraft: "E170" }, { name: "全日本空輸", code: "ANA", flightNum: "NH738", aircraft: "Q400" }] },
+                        { dest: "FUK", realMin: 115, airlines: [{ name: "アイベックス", code: "IBX", flightNum: "FW12", aircraft: "CRJ-700" }] },
+                        { dest: "NGO", realMin: 75, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH364", aircraft: "CRJ-700" }] }
+                    ]}
+                ],
+                HKD: [
+                    { limit: 120, dests: [
+                        { dest: "HND", realMin: 85, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH554", aircraft: "B767-300" }, { name: "日本航空", code: "JAL", flightNum: "JL588", aircraft: "B767-300" }] },
+                        { dest: "ITM", realMin: 100, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH746", aircraft: "B737-800" }] },
+                        { dest: "CTS", realMin: 45, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH4854", aircraft: "Q400" }] },
+                        { dest: "SDJ", realMin: 65, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL2123", aircraft: "E170" }] }
+                    ]}
+                ],
+                ISG: [
+                    { limit: 120, dests: [
+                        { dest: "OKA", realMin: 60, airlines: [{ name: "日本トランスオーシャン", code: "JTA", flightNum: "NU600", aircraft: "B737-800" }, { name: "全日本空輸", code: "ANA", flightNum: "NH1774", aircraft: "B737-800" }] },
+                        { dest: "KIX", realMin: 125, airlines: [{ name: "ピーチ", code: "APJ", flightNum: "MM232", aircraft: "A320" }] },
+                        { dest: "HND", realMin: 160, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL974", aircraft: "B767-300" }] },
+                        { dest: "FUK", realMin: 105, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH1866", aircraft: "B737-800" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "HND", realMin: 160, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH92", aircraft: "B787-8" }] }
+                    ]}
+                ],
+                MMY: [
+                    { limit: 120, dests: [
+                        { dest: "OKA", realMin: 50, airlines: [{ name: "日本トランスオーシャン", code: "JTA", flightNum: "NU556", aircraft: "B737-800" }, { name: "全日本空輸", code: "ANA", flightNum: "NH1726", aircraft: "B737-800" }] },
+                        { dest: "KIX", realMin: 125, airlines: [{ name: "ピーチ・アビエーション", code: "APJ", flightNum: "MM224", aircraft: "A320" }] },
+                        { dest: "NGO", realMin: 130, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH330", aircraft: "B737-800" }] },
+                        { dest: "HND", realMin: 160, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH88", aircraft: "B787-8" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "HND", realMin: 160, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL932", aircraft: "B737-800" }] }
+                    ]}
+                ],
+                XIY: [
+                    { limit: 120, dests: [
+                        { dest: "PEK", realMin: 110, airlines: [{ name: "中国国際航空", code: "CCA", flightNum: "CA1202", aircraft: "A330" }, { name: "中国東方航空", code: "CES", flightNum: "MU2101", aircraft: "A321" }, { name: "海南航空", code: "CHH", flightNum: "HU7112", aircraft: "B737-800" }] },
+                        { dest: "PVG", realMin: 120, airlines: [{ name: "中国東方航空", code: "CES", flightNum: "MU2152", aircraft: "A325" }, { name: "上海航空", code: "CSH", flightNum: "FM9422", aircraft: "B737-800" }, { name: "春秋航空", code: "CQH", flightNum: "9C8845", aircraft: "A320" }] },
+                        { dest: "ICN", realMin: 115, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE862", aircraft: "B737-900" }, { name: "アシアナ航空", code: "AAR", flightNum: "OZ324", aircraft: "A321" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 230, airlines: [{ name: "海南航空", code: "CHH", flightNum: "HU7927", aircraft: "B737-800" }, { name: "中国東方航空", code: "CES", flightNum: "MU5007", aircraft: "A320" }] },
+                        { dest: "SIN", realMin: 320, airlines: [{ name: "スクート", code: "TGW", flightNum: "TR135", aircraft: "A320" }] },
+                        { dest: "HKG", realMin: 170, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX947", aircraft: "A330-300" }] },
+                        { dest: "LHR", realMin: 360, airlines: [{ name: "天津航空", code: "GCR", flightNum: "GS7965", aircraft: "A330-200" }] },
+                        { dest: "CDG", realMin: 360, airlines: [{ name: "海南航空", code: "CHH", flightNum: "HU7907", aircraft: "B787-9" }] },
+                        { dest: "HND", realMin: 230, airlines: [{ name: "中国東方航空", code: "CES", flightNum: "MU5007", aircraft: "A320" }] }
+                    ]}
+                ],
+                CKG: [
+                    { limit: 120, dests: [
+                        { dest: "CAN", realMin: 100, airlines: [{ name: "中国南方航空", code: "CSN", flightNum: "CZ3461", aircraft: "A350-900" }, { name: "重慶航空", code: "CQN", flightNum: "OQ2301", aircraft: "A320" }, { name: "四川航空", code: "CSC", flightNum: "3U8923", aircraft: "A330" }] },
+                        { dest: "SZX", realMin: 110, airlines: [{ name: "深セン航空", code: "CSZ", flightNum: "ZH9421", aircraft: "A330" }, { name: "中国南方航空", code: "CSN", flightNum: "CZ3453", aircraft: "A321" }, { name: "厦門航空", code: "CXA", flightNum: "MF8251", aircraft: "B737-800" }] },
+                        { dest: "HKG", realMin: 120, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX933", aircraft: "A330" }, { name: "香港航空", code: "CRK", flightNum: "HX497", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "SIN", realMin: 290, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ815", aircraft: "B737-8" }, { name: "重慶航空", code: "CQN", flightNum: "OQ2015", aircraft: "A320" }] },
+                        { dest: "ICN", realMin: 210, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ354", aircraft: "A321" }, { name: "中国国際航空", code: "CCA", flightNum: "CA439", aircraft: "B737-800" }] },
+                        { dest: "DXB", realMin: 360, airlines: [{ name: "中国国際航空", code: "CCA", flightNum: "CA451", aircraft: "A330" }] },
+                        { dest: "LHR", realMin: 360, airlines: [{ name: "海南航空", code: "CHH", flightNum: "HU445", aircraft: "B787-9" }] },
+                        { dest: "MAD", realMin: 360, airlines: [{ name: "海南航空", code: "CHH", flightNum: "HU717", aircraft: "B787-9" }] }
+                    ]}
+                ],
+                KMG: [
+                    { limit: 120, dests: [
+                        { dest: "BKK", realMin: 110, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG613", aircraft: "A350-900" }, { name: "中国東方航空", code: "CES", flightNum: "MU741", aircraft: "B737-800" }, { name: "タイ・アジア航空", code: "AIQ", flightNum: "FD583", aircraft: "A320" }] },
+                        { dest: "CNX", realMin: 90, airlines: [{ name: "中国東方航空", code: "CES", flightNum: "MU2591", aircraft: "B737-800" }] },
+                        { dest: "HKG", realMin: 120, airlines: [{ name: "中国東方航空", code: "CES", flightNum: "MU765", aircraft: "B737-800" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "SIN", realMin: 240, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ851", aircraft: "B737-8" }, { name: "中国東方航空", code: "CES", flightNum: "MU5085", aircraft: "A320" }] },
+                        { dest: "KUL", realMin: 230, airlines: [{ name: "マレーシア航空", code: "MAS", flightNum: "MH351", aircraft: "B737-800" }, { name: "エアアジア", code: "AXM", flightNum: "AK102", aircraft: "A320" }] },
+                        { dest: "PVG", realMin: 190, airlines: [{ name: "中国東方航空", code: "CES", flightNum: "MU5811", aircraft: "A330" }, { name: "吉祥航空", code: "DKH", flightNum: "HO1104", aircraft: "A321" }] },
+                        { dest: "TPE", realMin: 200, airlines: [{ name: "四川航空", code: "CSC", flightNum: "3U3965", aircraft: "A321" }] }
+                    ]}
+                ],
+                HGH: [
+                    { limit: 120, dests: [
+                        { dest: "HKG", realMin: 120, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX959", aircraft: "A330" }, { name: "中国国際航空", code: "CCA", flightNum: "CA139", aircraft: "A321" }, { name: "香港航空", code: "CRK", flightNum: "HX127", aircraft: "A320" }] },
+                        { dest: "TPE", realMin: 110, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR757", aircraft: "A321" }, { name: "チャイナエアライン", code: "CAL", flightNum: "CI502", aircraft: "B737-800" }] },
+                        { dest: "ICN", realMin: 120, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ360", aircraft: "A321" }, { name: "大韓航空", code: "KAL", flightNum: "KE124", aircraft: "B737-900" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 180, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH930", aircraft: "B787-8" }, { name: "中国国際航空", code: "CCA", flightNum: "CA145", aircraft: "A321" }, { name: "長龍航空", code: "CDC", flightNum: "GJ8021", aircraft: "A320" }] },
+                        { dest: "KIX", realMin: 150, airlines: [{ name: "中国東方航空", code: "CES", flightNum: "MU5033", aircraft: "A320" }, { name: "スプリング・ジャパン", code: "SJP", flightNum: "IJ242", aircraft: "B737-800" }, { name: "厦門航空", code: "CXA", flightNum: "MF8615", aircraft: "B737-800" }] },
+                        { dest: "SIN", realMin: 300, airlines: [{ name: "スクート", code: "TGW", flightNum: "TR189", aircraft: "A321neo" }, { name: "厦門航空", code: "CXA", flightNum: "MF873", aircraft: "B737-800" }] },
+                        { dest: "BKK", realMin: 250, airlines: [{ name: "タイ・アジア航空", code: "AIQ", flightNum: "FD415", aircraft: "A320" }, { name: "長龍航空", code: "CDC", flightNum: "GJ8021", aircraft: "A320" }] }
+                    ]}
+                ],
+                XMN: [
+                    { limit: 120, dests: [
+                        { dest: "HKG", realMin: 90, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX979", aircraft: "A330" }, { name: "厦門航空", code: "CXA", flightNum: "MF381", aircraft: "B737-800" }] },
+                        { dest: "TPE", realMin: 90, airlines: [{ name: "厦門航空", code: "CXA", flightNum: "MF881", aircraft: "B737-800" }, { name: "立栄航空", code: "UIA", flightNum: "B7510", aircraft: "A321" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "SIN", realMin: 260, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ853", aircraft: "B737-8" }, { name: "厦門航空", code: "CXA", flightNum: "MF851", aircraft: "B737-800" }] },
+                        { dest: "NRT", realMin: 220, airlines: [{ name: "厦門航空", code: "CXA", flightNum: "MF815", aircraft: "B787-8" }] },
+                        { dest: "KIX", realMin: 190, airlines: [{ name: "厦門航空", code: "CXA", flightNum: "MF839", aircraft: "B737-800" }] },
+                        { dest: "KUL", realMin: 250, airlines: [{ name: "マレーシア航空", code: "MAS", flightNum: "MH391", aircraft: "B737-800" }, { name: "厦門航空", code: "CXA", flightNum: "MF823", aircraft: "B737-800" }] },
+                        { dest: "SYD", realMin: 360, airlines: [{ name: "厦門航空", code: "CXA", flightNum: "MF801", aircraft: "B787-9" }] }
+                    ]}
+                ],
+                TAO: [
+                    { limit: 120, dests: [
+                        { dest: "ICN", realMin: 85, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE842", aircraft: "B737-900" }, { name: "アシアナ航空", code: "AAR", flightNum: "OZ348", aircraft: "A321" }, { name: "山東航空", code: "CDG", flightNum: "SC4617", aircraft: "B737-800" }, { name: "青島航空", code: "QDA", flightNum: "QW9901", aircraft: "A320" }] },
+                        { dest: "PUS", realMin: 95, airlines: [{ name: "山東航空", code: "CDG", flightNum: "SC4707", aircraft: "B737-800" }, { name: "エアプサン", code: "ABL", flightNum: "BX322", aircraft: "A321" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 160, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH928", aircraft: "B787-8" }, { name: "山東航空", code: "CDG", flightNum: "SC8825", aircraft: "B737-800" }] },
+                        { dest: "KIX", realMin: 140, airlines: [{ name: "山東航空", code: "CDG", flightNum: "SC8811", aircraft: "B737-800" }, { name: "青島航空", code: "QDA", flightNum: "QW9789", aircraft: "A320neo" }] },
+                        { dest: "TPE", realMin: 150, airlines: [{ name: "山東航空", code: "CDG", flightNum: "SC4085", aircraft: "B737-800" }] },
+                        { dest: "SIN", realMin: 340, airlines: [{ name: "スクート", code: "TGW", flightNum: "TR185", aircraft: "A321neo" }] },
+                        { dest: "LHR", realMin: 360, airlines: [{ name: "首都航空", code: "CBH", flightNum: "JD431", aircraft: "A330" }] }
+                    ]}
+                ],
+                SIN: [
+                    { limit: 90, dests: [
+                        { dest: "KUL", realMin: 60, airlines: [{ name: "マレーシア航空", code: "MAS", flightNum: "MH614", aircraft: "B737-800" }, { name: "エアアジア", code: "AXM", flightNum: "AK702", aircraft: "A320" }, { name: "シンガポール航空", code: "SIA", flightNum: "SQ106", aircraft: "A350" }, { name: "スクート", code: "TGW", flightNum: "TR452", aircraft: "A320" }, { name: "ジェットスター航空", code: "JSA", flightNum: "3K683", aircraft: "A320" }] }
+                    ]},
+                    { limit: 180, dests: [
+                        { dest: "BKK", realMin: 145, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ708", aircraft: "A350-900" }, { name: "ジェットスター・アジア", code: "JSA", flightNum: "3K511", aircraft: "A320" }, { name: "タイ国際航空", code: "THA", flightNum: "TG404", aircraft: "B777-300ER" }, { name: "タイ・エアアジア", code: "AIQ", flightNum: "FD350", aircraft: "A320" }] },
+                        { dest: "CGK", realMin: 110, airlines: [{ name: "ガルーダ・インドネシア航空", code: "GIA", flightNum: "GA825", aircraft: "B777-300ER" }, { name: "シンガポール航空", code: "SIA", flightNum: "SQ953", aircraft: "B777" }, { name: "インドネシア・エアアジア", code: "AWQ", flightNum: "QZ263", aircraft: "A320" }] },
+                        { dest: "HKG", realMin: 240, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ892", aircraft: "A380" }, { name: "キャセイパシフィック", code: "CPA", flightNum: "CX734", aircraft: "A350" }, { name: "スクート", code: "TGW", flightNum: "TR920", aircraft: "A321" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "HKG", realMin: 245, airlines: [{ name: "キャセイパシフィック航空", code: "CPA", flightNum: "CX736", aircraft: "A350-900" }] },
+                        { dest: "HND", realMin: 360, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH842", aircraft: "B787-9" }, { name: "日本航空", code: "JAL", flightNum: "JL36", aircraft: "B787-9" }, { name: "シンガポール航空", code: "SIA", flightNum: "SQ632", aircraft: "A350-900" }] },
+                        { dest: "NRT", realMin: 360, airlines: [{ name: "ZIPAIR", code: "TZP", flightNum: "ZG54", aircraft: "B787-8" }, { name: "シンガポール航空", code: "SIA", flightNum: "SQ12", aircraft: "B777-300ER" }] },
+                        { dest: "SYD", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ211", aircraft: "B777-300ER" }, { name: "カンタス航空", code: "QFA", flightNum: "QF82", aircraft: "A330-300" }, { name: "スクート", code: "TGW", flightNum: "TR12", aircraft: "B787-9" }] },
+                        { dest: "DXB", realMin: 360, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK353", aircraft: "A380" }] },
+                        { dest: "HGH", realMin: 300, airlines: [{ name: "スクート", code: "TGW", flightNum: "TR188", aircraft: "A321neo" }] },
+                        { dest: "CKG", realMin: 290, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ816", aircraft: "B737-8" }] },
+                        { dest: "BKK", realMin: 145, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ714", aircraft: "A350-900" }] }
+                    ]}
+                ],
+                HKG: [
+                    { limit: 90, dests: [
+                        { dest: "TPE", realMin: 100, airlines: [{ name: "キャセイパシフィック航空", code: "CPA", flightNum: "CX400", aircraft: "A330" }, { name: "スターラックス航空", code: "SLA", flightNum: "JX206", aircraft: "A330neo" }, { name: "チャイナエアライン", code: "CAL", flightNum: "CI910", aircraft: "B777" }, { name: "エバー航空", code: "EVA", flightNum: "BR870", aircraft: "B787" }, { name: "香港航空", code: "CRK", flightNum: "HX252", aircraft: "A320" }] }
+                    ]},
+                    { limit: 180, dests: [
+                        { dest: "PVG", realMin: 165, airlines: [{ name: "上海航空", code: "CSH", flightNum: "FM846", aircraft: "A330" }, { name: "中国東方航空", code: "CES", flightNum: "MU502", aircraft: "A321" }] },
+                        { dest: "BKK", realMin: 180, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK385", aircraft: "A380-800" }, { name: "キャセイパシフィック", code: "CPA", flightNum: "CX751", aircraft: "A350" }, { name: "タイ国際航空", code: "THA", flightNum: "TG601", aircraft: "A350" }, { name: "大中華航空", code: "HKE", flightNum: "UO704", aircraft: "A320neo" }] },
+                        { dest: "SIN", realMin: 240, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ857", aircraft: "B787" }, { name: "スクート", code: "TGW", flightNum: "TR921", aircraft: "A321" }, { name: "キャセイパシフィック", code: "CPA", flightNum: "CX739", aircraft: "B777" }] },
+                        { dest: "ICN", realMin: 210, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ722", aircraft: "A330" }, { name: "大韓航空", code: "KAL", flightNum: "KE608", aircraft: "B777" }, { name: "香港エクスプレス", code: "HKE", flightNum: "UO618", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "SIN", realMin: 240, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ861", aircraft: "B777-300ER" }, { name: "シンガポール航空", code: "SIA", flightNum: "SQ893", aircraft: "A380-800" }] },
+                        { dest: "NRT", realMin: 270, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL26", aircraft: "B787-9" }, { name: "香港エクスプレス", code: "HKE", flightNum: "UO646", aircraft: "A320neo" }, { name: "キャセイパシフィック", code: "CPA", flightNum: "CX504", aircraft: "B777" }, { name: "キャセイパシフィック航空", code: "CPA", flightNum: "CX500", aircraft: "B777-300" }] },
+                        { dest: "LHR", realMin: 360, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX251", aircraft: "B777-300ER" }, { name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA32", aircraft: "B787-9" }] },
+                        { dest: "JFK", realMin: 360, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX840", aircraft: "B777" }] },
+                        { dest: "XIY", realMin: 180, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX946", aircraft: "A330" }] },
+                        { dest: "CKG", realMin: 150, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX932", aircraft: "A320" }] }
+                    ]}
+                ],
+                ICN: [
+                    { limit: 120, dests: [
+                        { dest: "FUK", realMin: 80, airlines: [{ name: "チェジュ航空", code: "JJA", flightNum: "7C1402", aircraft: "B737-800" }, { name: "ティーウェイ航空", code: "TWB", flightNum: "TW291", aircraft: "B737" }] },
+                        { dest: "KIX", realMin: 105, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE723", aircraft: "A330-300" }, { name: "ピーチ", code: "APJ", flightNum: "MM002", aircraft: "A320" }, { name: "ジンエアー", code: "JNA", flightNum: "LJ211", aircraft: "B777" }, { name: "アシアナ航空", code: "AAR", flightNum: "OZ114", aircraft: "A330-300" }] },
+                        { dest: "PVG", realMin: 120, airlines: [{ name: "中国東方航空", code: "CES", flightNum: "MU5052", aircraft: "A321" }, { name: "大韓航空", code: "KAL", flightNum: "KE893", aircraft: "A330" }] },
+                        { dest: "NRT", realMin: 145, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE703", aircraft: "B777-300ER" }, { name: "アシアナ航空", code: "AAR", flightNum: "OZ101", aircraft: "A380" }, { name: "チェジュ航空", code: "JJA", flightNum: "7C1102", aircraft: "B737-800" }, { name: "大韓航空", code: "KAL", flightNum: "KE705", aircraft: "B777-300ER" }] },
+                        { dest: "TAO", realMin: 85, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE841", aircraft: "B737" }, { name: "山東航空", code: "CDG", flightNum: "SC4618", aircraft: "B737" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 145, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ102", aircraft: "A380" }] },
+                        { dest: "TPE", realMin: 165, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR169", aircraft: "B777-300ER" }, { name: "チャイナエアライン", code: "CAL", flightNum: "CI161", aircraft: "A330" }] },
+                        { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ611", aircraft: "B787-10" }, { name: "大韓航空", code: "KAL", flightNum: "KE643", aircraft: "A350" }] },
+                        { dest: "HKG", realMin: 230, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX419", aircraft: "A350-900" }] },
+                        { dest: "LHR", realMin: 360, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ521", aircraft: "A350" }, { name: "大韓航空", code: "KAL", flightNum: "KE907", aircraft: "B747-8" }] },
+                        { dest: "HGH", realMin: 130, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE123", aircraft: "B737" }] }
+                    ]}
+                ],
+                TPE: [
+                    { limit: 120, dests: [
+                        { dest: "HKG", realMin: 110, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX403", aircraft: "B777-300" }, { name: "香港エクスプレス", code: "HKE", flightNum: "UO111", aircraft: "A320" }] },
+                        { dest: "OKA", realMin: 90, airlines: [{ name: "ピーチ", code: "APJ", flightNum: "MM922", aircraft: "A320" }, { name: "スターラックス航空", code: "SLA", flightNum: "JX870", aircraft: "A330neo" }] },
+                        { dest: "NRT", realMin: 200, airlines: [{ name: "チャイナエアライン", code: "CAL", flightNum: "CI108", aircraft: "A350" }, { name: "エバー航空", code: "EVA", flightNum: "BR198", aircraft: "B787" }, { name: "スターラックス", code: "SLA", flightNum: "JX800", aircraft: "A350" }] },
+                        { dest: "XMN", realMin: 90, airlines: [{ name: "厦門航空", code: "CXA", flightNum: "MF882", aircraft: "B737" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 190, airlines: [{ name: "チャイナエアライン", code: "CAL", flightNum: "CI100", aircraft: "A350-900" }, { name: "エバー航空", code: "EVA", flightNum: "BR196", aircraft: "B787-10" }] },
+                        { dest: "KIX", realMin: 170, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR178", aircraft: "B787-10" }, { name: "チャイナエアライン", code: "CAL", flightNum: "CI156", aircraft: "A330-300" }] },
+                        { dest: "SIN", realMin: 285, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ877", aircraft: "B787-10" }, { name: "エバー航空", code: "EVA", flightNum: "BR225", aircraft: "B777" }] },
+                        { dest: "BKK", realMin: 215, airlines: [{ name: "スターラックス航空", code: "SLA", flightNum: "JX741", aircraft: "A330neo" }, { name: "タイ国際航空", code: "THA", flightNum: "TG633", aircraft: "B777" }] },
+                        { dest: "LAX", realMin: 360, airlines: [{ name: "チャイナエアライン", code: "CAL", flightNum: "CI8", aircraft: "B777-300ER" }, { name: "エバー航空", code: "EVA", flightNum: "BR12", aircraft: "B777-300ER" }, { name: "スターラックス", code: "SLA", flightNum: "JX2", aircraft: "A350" }] },
+                        { dest: "CDG", realMin: 360, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR87", aircraft: "B777" }] }
+                    ]}
+                ],
+                LHR: [
+                    { limit: 90, dests: [
+                        { dest: "CDG", realMin: 70, airlines: [{ name: "エールフランス航空", code: "AFR", flightNum: "AF1681", aircraft: "A321" }, { name: "イージージェット", code: "EZY", flightNum: "U28424", aircraft: "A320" }, { name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA304", aircraft: "A320" }, { name: "エールフランス航空", code: "AFR", flightNum: "AF1781", aircraft: "A320" }] },
+                        { dest: "FRA", realMin: 90, airlines: [{ name: "ルフトハンザ航空", code: "DLH", flightNum: "LH901", aircraft: "A321" }, { name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA902", aircraft: "A320" }, { name: "ルフトハンザ航空", code: "DLH", flightNum: "LH903", aircraft: "A321" }] },
+                        { dest: "AMS", realMin: 70, airlines: [{ name: "KLMオランダ航空", code: "KLM", flightNum: "KL1010", aircraft: "B737-800" }, { name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA430", aircraft: "A320" }, { name: "KLMオランダ航空", code: "KLM", flightNum: "KL1016", aircraft: "B737-800" }] }
+                    ]},
+                    { limit: 120, dests: [
+                        { dest: "FCO", realMin: 120, airlines: [{ name: "ITAエアウェイズ", code: "ITY", flightNum: "AZ201", aircraft: "A320neo" }, { name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA546", aircraft: "A321" }] },
+                        { dest: "MAD", realMin: 145, airlines: [{ name: "イベリア航空", code: "IBE", flightNum: "IB3163", aircraft: "A320neo" }, { name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA460", aircraft: "A320" }, { name: "イベリア航空", code: "IBE", flightNum: "IB3171", aircraft: "A350-900" }] },
+                        { dest: "CPH", realMin: 110, airlines: [{ name: "スカンジナビア航空", code: "SAS", flightNum: "SK502", aircraft: "A320neo" }, { name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA812", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "JFK", realMin: 360, airlines: [{ name: "ヴァージン・アトランティック", code: "VIR", flightNum: "VS3", aircraft: "A350-1000" }, { name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA113", aircraft: "B777-300ER" }, { name: "アメリカン航空", code: "AAL", flightNum: "AA101", aircraft: "B777-300ER" }, { name: "デルタ航空", code: "DAL", flightNum: "DL2", aircraft: "B767-400ER" }, { name: "ジェットブルー", code: "JBU", flightNum: "B67", aircraft: "A321LR" }] },
+                        { dest: "DXB", realMin: 340, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK2", aircraft: "A380-800" }, { name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA107", aircraft: "B777-300ER" }, { name: "エミレーツ航空", code: "UAE", flightNum: "EK4", aircraft: "A380-800" }] },
+                        { dest: "HND", realMin: 360, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL44", aircraft: "A350-1000" }, { name: "全日本空輸", code: "ANA", flightNum: "NH212", aircraft: "B777-300ER" }] },
+                        { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ317", aircraft: "A380" }, { name: "カンタス航空", code: "QFA", flightNum: "QF2", aircraft: "A380" }] },
+                        { dest: "CDG", realMin: 70, airlines: [{ name: "エールフランス航空", code: "AFR", flightNum: "AF1681", aircraft: "A321" }] }
+                    ]}
+                ],
+                CDG: [
+                    { limit: 120, dests: [
+                        { dest: "LHR", realMin: 80, airlines: [{ name: "エールフランス航空", code: "AFR", flightNum: "AF1680", aircraft: "A320" }, { name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA307", aircraft: "A321" }] },
+                        { dest: "FRA", realMin: 75, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH1031", aircraft: "A320neo" }, { name: "エールフランス", code: "AFR", flightNum: "AF1318", aircraft: "A319" }] },
+                        { dest: "AMS", realMin: 75, airlines: [{ name: "エールフランス航空", code: "AFR", flightNum: "AF1240", aircraft: "A321" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "JFK", realMin: 360, airlines: [{ name: "エールフランス航空", code: "AFR", flightNum: "AF006", aircraft: "B777-300ER" }, { name: "デルタ航空", code: "DAL", flightNum: "DL263", aircraft: "A330" }, { name: "アメリカン航空", code: "AAL", flightNum: "AA45", aircraft: "B777" }] },
+                        { dest: "DXB", realMin: 360, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK74", aircraft: "A380" }, { name: "エールフランス", code: "AFR", flightNum: "AF662", aircraft: "A350" }] },
+                        { dest: "HKG", realMin: 360, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX260", aircraft: "B777" }] },
+                        { dest: "XIY", realMin: 360, airlines: [{ name: "海南航空", code: "CHH", flightNum: "HU7908", aircraft: "B787" }] },
+                        { dest: "TPE", realMin: 360, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR88", aircraft: "B777" }] },
+                        { dest: "LHR", realMin: 80, airlines: [{ name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA307", aircraft: "A321" }] }
+                    ]}
+                ],
+                FRA: [
+                    { limit: 120, dests: [
+                        { dest: "LHR", realMin: 100, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH902", aircraft: "A321" }, { name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA903", aircraft: "A320" }] },
+                        { dest: "CDG", realMin: 75, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH1034", aircraft: "A320" }, { name: "エールフランス", code: "AFR", flightNum: "AF1219", aircraft: "A320" }] },
+                        { dest: "ZRH", realMin: 50, airlines: [{ name: "スイス航空", code: "SWR", flightNum: "LX1069", aircraft: "A220" }] },
+                        { dest: "MUC", realMin: 55, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH100", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "JFK", realMin: 360, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH400", aircraft: "B747-8" }, { name: "シンガポール航空", code: "SIA", flightNum: "SQ26", aircraft: "A380" }, { name: "デルタ航空", code: "DAL", flightNum: "DL107", aircraft: "B767" }] },
+                        { dest: "DXB", realMin: 360, airlines: [{ name: "ルフトハンザドイツ航空", code: "DLH", flightNum: "LH630", aircraft: "A330-300" }, { name: "エミレーツ航空", code: "UAE", flightNum: "EK46", aircraft: "A380" }] },
+                        { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ325", aircraft: "B777" }, { name: "ルフトハンザ", code: "DLH", flightNum: "LH778", aircraft: "A340" }] },
+                        { dest: "PEK", realMin: 360, airlines: [{ name: "中国国際航空", code: "CCA", flightNum: "CA932", aircraft: "B777" }] }
+                    ]}
+                ],
+                DXB: [
+                    { limit: 120, dests: [
+                        { dest: "DOH", realMin: 70, airlines: [{ name: "カタール航空", code: "QTR", flightNum: "QR1003", aircraft: "B777-300ER" }, { name: "フライドバイ", code: "FDB", flightNum: "FZ001", aircraft: "B737" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "LHR", realMin: 360, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK1", aircraft: "A380" }, { name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA106", aircraft: "B777" }, { name: "エミレーツ航空", code: "UAE", flightNum: "EK001", aircraft: "A380-800" }] },
+                        { dest: "CDG", realMin: 360, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK73", aircraft: "A380" }, { name: "エールフランス", code: "AFR", flightNum: "AF655", aircraft: "A350" }, { name: "エミレーツ航空", code: "UAE", flightNum: "EK073", aircraft: "A380-800" }] },
+                        { dest: "DEL", realMin: 185, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK510", aircraft: "B777-300ER" }, { name: "エアインディア", code: "AIC", flightNum: "AI996", aircraft: "A320" }, { name: "インディゴ", code: "IGO", flightNum: "6E22", aircraft: "A320" }] },
+                        { dest: "SIN", realMin: 360, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK354", aircraft: "A380" }, { name: "シンガポール航空", code: "SIA", flightNum: "SQ495", aircraft: "A350" }] }
+                    ]}
+                ],
+                JFK: [
+                    { limit: 90, dests: [
+                        { dest: "BOS", realMin: 70, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2210", aircraft: "E175" }, { name: "デルタ航空", code: "DAL", flightNum: "DL5241", aircraft: "CRJ9" }, { name: "ジェットブルー", code: "JBU", flightNum: "B61202", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "LAX", realMin: 350, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA3", aircraft: "A321T" }, { name: "デルタ航空", code: "DAL", flightNum: "DL302", aircraft: "B767" }, { name: "ユナイテッド航空", code: "UAL", flightNum: "UA534", aircraft: "B757" }] },
+                        { dest: "LHR", realMin: 360, airlines: [{ name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA112", aircraft: "B777-300ER" }, { name: "ヴァージン・アトランティック", code: "VIR", flightNum: "VS4", aircraft: "A350" }, { name: "アメリカン航空", code: "AAL", flightNum: "AA100", aircraft: "B777" }] },
+                        { dest: "HND", realMin: 360, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL5", aircraft: "A350-1000" }] },
+                        { dest: "CDG", realMin: 360, airlines: [{ name: "エールフランス", code: "AFR", flightNum: "AF015", aircraft: "B777" }, { name: "デルタ航空", code: "DAL", flightNum: "DL264", aircraft: "A330" }] }
+                    ]}
+                ],
+                LAX: [
+                    { limit: 90, dests: [
+                        { dest: "SFO", realMin: 85, airlines: [{ name: "アラスカ航空", code: "ASA", flightNum: "AS3315", aircraft: "E175" }, { name: "ユナイテッド航空", code: "UAL", flightNum: "UA2042", aircraft: "B737-900" }, { name: "デルタ航空", code: "DAL", flightNum: "DL1240", aircraft: "A220" }] }
+                    ]},
+                    { limit: 240, dests: [
+                        { dest: "ORD", realMin: 240, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA302", aircraft: "B737-900" }, { name: "サウスウエスト航空", code: "SWA", flightNum: "WN415", aircraft: "B737-700" }, { name: "アメリカン航空", code: "AAL", flightNum: "AA1452", aircraft: "B737" }] },
+                        { dest: "SEA", realMin: 170, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL1144", aircraft: "A220" }, { name: "アラスカ航空", code: "ASA", flightNum: "AS1141", aircraft: "B737" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "JFK", realMin: 350, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL301", aircraft: "B767-400ER" }, { name: "アメリカン航空", code: "AAL", flightNum: "AA10", aircraft: "A321T" }] },
+                        { dest: "HND", realMin: 360, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL61", aircraft: "B787-9" }, { name: "全日本空輸", code: "ANA", flightNum: "NH105", aircraft: "B777-300ER" }] },
+                        { dest: "TPE", realMin: 360, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR11", aircraft: "B777" }, { name: "チャインエアーライン", code: "CAL", flightNum: "CI7", aircraft: "B777" }] }
+                    ]}
+                ],
+                BKK: [
+                    { limit: 120, dests: [
+                        { dest: "HKT", realMin: 80, airlines: [{ name: "タイ・エアアジア", code: "AIQ", flightNum: "FD3001", aircraft: "A320neo" }, { name: "タイ国際航空", code: "THA", flightNum: "TG201", aircraft: "B777-300ER" }, { name: "タイ・ベトジェット", code: "TVJ", flightNum: "VZ302", aircraft: "A320" }] },
+                        { dest: "CNX", realMin: 75, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG110", aircraft: "B777-200ER" }, { name: "バンコク・エアウェイズ", code: "BKP", flightNum: "PG215", aircraft: "A320" }, { name: "タイ・エアアジア", code: "AIQ", flightNum: "FD3431", aircraft: "A320" }] },
+                        { dest: "SGN", realMin: 90, airlines: [{ name: "ベトナム航空", code: "HVN", flightNum: "VN651", aircraft: "A321" }, { name: "ベトジェットエア", code: "VJC", flightNum: "VJ801", aircraft: "A320" }, { name: "タイ国際航空", code: "THA", flightNum: "TG550", aircraft: "A320" }] }
+                    ]},
+                    { limit: 180, dests: [
+                        { dest: "SIN", realMin: 145, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ705", aircraft: "A350-900" }, { name: "タイ国際航空", code: "THA", flightNum: "TG403", aircraft: "B777-300ER" }, { name: "スクート", code: "TGW", flightNum: "TR605", aircraft: "A321neo" }] },
+                        { dest: "HKG", realMin: 175, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX700", aircraft: "A350-900" }, { name: "タイ国際航空", code: "THA", flightNum: "TG600", aircraft: "A350-900" }, { name: "エミレーツ航空", code: "UAE", flightNum: "EK385", aircraft: "A380" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 360, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG642", aircraft: "A350-900" }, { name: "日本航空", code: "JAL", flightNum: "JL708", aircraft: "B787-9" }, { name: "全日本空輸", code: "ANA", flightNum: "NH806", aircraft: "B787-9" }] },
+                        { dest: "HND", realMin: 355, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG682", aircraft: "A350-900" }, { name: "日本航空", code: "JAL", flightNum: "JL32", aircraft: "B787-9" }, { name: "全日本空輸", code: "ANA", flightNum: "NH848", aircraft: "B787-9" }] },
+                        { dest: "DEL", realMin: 260, airlines: [{ name: "エアインディア", code: "AIC", flightNum: "AI333", aircraft: "A320neo" }, { name: "インディゴ", code: "IGO", flightNum: "6E1054", aircraft: "A320neo" }, { name: "タイ国際航空", code: "THA", flightNum: "TG323", aircraft: "B777-200ER" }] },
+                        { dest: "ICN", realMin: 320, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE658", aircraft: "A330-300" }, { name: "アシアナ航空", code: "AAR", flightNum: "OZ742", aircraft: "A350-900" }] },
+                        { dest: "TPE", realMin: 220, airlines: [{ name: "チャイナエアライン", code: "CAL", flightNum: "CI834", aircraft: "A350-900" }, { name: "エバー航空", code: "EVA", flightNum: "BR212", aircraft: "B787-10" }] },
+                        { dest: "SIN", realMin: 145, airlines: [{ name: "スクート", code: "TGW", flightNum: "TR611", aircraft: "A321neo" }] }
+                    ]}
+                ],
+                GMP: [
+                    { limit: 120, dests: [
+                        { dest: "KIX", realMin: 100, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE2117", aircraft: "B737-900" }] },
+                        { dest: "PUS", realMin: 60, airlines: [{ name: "チェジュ航空", code: "JJA", flightNum: "7C1304", aircraft: "B737-800" }] },
+                        { dest: "HND", realMin: 120, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH862", aircraft: "B787-8" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "HND", realMin: 125, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL92", aircraft: "B787-9" }] },
+                        { dest: "PVG", realMin: 115, airlines: [{ name: "中国東方航空", code: "CES", flightNum: "MU512", aircraft: "A330-300" }] },
+                        { dest: "TPE", realMin: 155, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR155", aircraft: "A321" }] }
+                    ]}
+                ],
+                PUS: [
+                    { limit: 120, dests: [
+                        { dest: "FUK", realMin: 55, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE2131", aircraft: "B737-900" }] },
+                        { dest: "KIX", realMin: 90, airlines: [{ name: "チェジュ航空", code: "JJA", flightNum: "7C1352", aircraft: "B737-800" }] },
+                        { dest: "ICN", realMin: 60, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE1402", aircraft: "B737-900" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 125, airlines: [{ name: "エアプサン", code: "ABL", flightNum: "BX112", aircraft: "A321" }] },
+                        { dest: "TPE", realMin: 155, airlines: [{ name: "タイガーエア台湾", code: "TTW", flightNum: "IT607", aircraft: "A320" }, { name: "チェジュ航空", code: "JJA", flightNum: "7C2653", aircraft: "B737-800" }] }
+                    ]}
+                ],
+                KHH: [
+                    { limit: 120, dests: [
+                        { dest: "HKG", realMin: 90, airlines: [{ name: "キャセイパシフィック航空", code: "CPA", flightNum: "CX431", aircraft: "A330-300" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 210, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR108", aircraft: "A321" }] },
+                        { dest: "KIX", realMin: 185, airlines: [{ name: "タイガーエア台湾", code: "TTW", flightNum: "IT284", aircraft: "A320" }, { name: "ピーチ・アビエーション", code: "APJ", flightNum: "MM036", aircraft: "A320" }] },
+                        { dest: "ICN", realMin: 175, airlines: [{ name: "チェジュ航空", code: "JJA", flightNum: "7C4502", aircraft: "B737-800" }] },
+                        { dest: "FUK", realMin: 160, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR120", aircraft: "A321" }] }
+                    ]}
+                ],
+                PEK: [
+                    { limit: 120, dests: [
+                        { dest: "PVG", realMin: 130, airlines: [{ name: "中国国際航空", code: "CCA", flightNum: "CA1501", aircraft: "B777-300ER" }] },
+                        { dest: "ICN", realMin: 120, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ334", aircraft: "A321" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "HND", realMin: 210, airlines: [{ name: "日本航空", code: "JAL", flightNum: "JL860", aircraft: "B787-9" }, { name: "中国国際航空", code: "CCA", flightNum: "CA181", aircraft: "A330-300" }] },
+                        { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ805", aircraft: "B777-300ER" }] }
+                    ]}
+                ],
+                PVG: [
+                    { limit: 120, dests: [
+                        { dest: "PEK", realMin: 135, airlines: [{ name: "中国東方航空", code: "CES", flightNum: "MU5101", aircraft: "A350-900" }] },
+                        { dest: "ICN", realMin: 120, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE894", aircraft: "A330-300" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 175, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH922", aircraft: "B787-9" }, { name: "全日本空輸", code: "ANA", flightNum: "NH920", aircraft: "B787-9" }] },
+                        { dest: "KIX", realMin: 135, airlines: [{ name: "吉祥航空", code: "DKH", flightNum: "HO1335", aircraft: "A321neo" }, { name: "中国東方航空", code: "MU515", aircraft: "A330-300" }] },
+                        { dest: "SIN", realMin: 315, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ833", aircraft: "A380" }] }
+                    ]}
+                ],
+                CAN: [
+                    { limit: 120, dests: [
+                        { dest: "PVG", realMin: 130, airlines: [{ name: "中国南方航空", code: "CSN", flightNum: "CZ3523", aircraft: "A350-900" }] },
+                        { dest: "HKG", realMin: 60, airlines: [{ name: "キャセイパシフィック航空", code: "CPA", flightNum: "CX983", aircraft: "A330-300" }] },
+                        { dest: "SZX", realMin: 45, airlines: [{ name: "中国南方航空", code: "CSN", flightNum: "CZ3211", aircraft: "B737-800" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 250, airlines: [{ name: "中国南方航空", code: "CSN", flightNum: "CZ385", aircraft: "A350-900" }] },
+                        { dest: "SIN", realMin: 255, airlines: [{ name: "スクート", code: "TGW", flightNum: "TR101", aircraft: "A320neo" }] },
+                        { dest: "ICN", realMin: 210, airlines: [{ name: "中国南方航空", code: "CSN", flightNum: "CZ337", aircraft: "A321" }] }
+                    ]}
+                ],
+                SZX: [
+                    { limit: 120, dests: [
+                        { dest: "PVG", realMin: 135, airlines: [{ name: "深セン航空", code: "CSZ", flightNum: "ZH9109", aircraft: "A330" }] },
+                        { dest: "HKG", realMin: 40, airlines: [{ name: "中国国際航空", code: "CCA", flightNum: "CA115", aircraft: "B737-800" }] },
+                        { dest: "CAN", realMin: 45, airlines: [{ name: "深セン航空", code: "CSZ", flightNum: "ZH9211", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 255, airlines: [{ name: "深セン航空", code: "CSZ", flightNum: "ZH9051", aircraft: "B737-800" }] },
+                        { dest: "SIN", realMin: 240, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ807", aircraft: "B777-300ER" }] },
+                        { dest: "TPE", realMin: 110, airlines: [{ name: "チャイナエアライン", code: "CAL", flightNum: "CI528", aircraft: "B737-800" }] }
+                    ]}
+                ],
+                CTU: [
+                    { limit: 120, dests: [
+                        { dest: "PEK", realMin: 150, airlines: [{ name: "中国国際航空", code: "CCA", flightNum: "CA1406", aircraft: "A330" }] },
+                        { dest: "XIY", realMin: 80, airlines: [{ name: "中国東方航空", code: "CES", flightNum: "MU5432", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 320, airlines: [{ name: "四川航空", code: "CSC", flightNum: "3U3961", aircraft: "A330" }] },
+                        { dest: "SIN", realMin: 290, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ843", aircraft: "B787-10" }] },
+                        { dest: "HKG", realMin: 165, airlines: [{ name: "キャセイパシフィック航空", code: "CPA", flightNum: "CX927", aircraft: "A330-300" }] },
+                        { dest: "ICN", realMin: 230, airlines: [{ name: "四川航空", code: "CSC", flightNum: "3U3711", aircraft: "A321" }] }
+                    ]}
+                ],
+                HRB: [
+                    { limit: 120, dests: [
+                        { dest: "PEK", realMin: 115, airlines: [{ name: "中国国際航空", code: "CCA", flightNum: "CA1640", aircraft: "B737-800" }, { name: "中国国際航空", code: "CCA", flightNum: "CA1612", aircraft: "B737-800" }] },
+                        { dest: "PVG", realMin: 170, airlines: [{ name: "中国東方航空", code: "CES", flightNum: "MU5614", aircraft: "A321" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 185, airlines: [{ name: "スプリング・ジャパン", code: "SJP", flightNum: "IJ214", aircraft: "B737-800" }, { name: "中国南方航空", code: "CSN", flightNum: "CZ6085", aircraft: "A321" }] },
+                        { dest: "ICN", realMin: 140, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ340", aircraft: "A321" }] }
+                    ]}
+                ],
+                HKT: [
+                    { limit: 120, dests: [
+                        { dest: "BKK", realMin: 85, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG202", aircraft: "B777-300ER" }] },
+                        { dest: "SIN", realMin: 110, airlines: [{ name: "ジェットスター・アジア", code: "JSA", flightNum: "3K534", aircraft: "A320" }] },
+                        { dest: "CNX", realMin: 120, airlines: [{ name: "タイ・エアアジア", code: "AIQ", flightNum: "FD3961", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "HKG", realMin: 210, airlines: [{ name: "キャセイパシフィック航空", code: "CPA", flightNum: "CX770", aircraft: "A350-900" }] },
+                        { dest: "ICN", realMin: 350, airlines: [{ name: "大韓航空", code: "KAL", flightNum: "KE664", aircraft: "A330-300" }] },
+                        { dest: "DXB", realMin: 360, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK379", aircraft: "B777-300ER" }] }
+                    ]}
+                ],
+                CNX: [
+                    { limit: 120, dests: [
+                        { dest: "BKK", realMin: 75, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG103", aircraft: "A350-900" }, { name: "タイ・ベトジェットエア", code: "TVJ", flightNum: "VZ101", aircraft: "A320" }] },
+                        { dest: "HKT", realMin: 120, airlines: [{ name: "タイ・エアアジア", code: "AIQ", flightNum: "FD3961", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "SIN", realMin: 180, airlines: [{ name: "スクート", code: "TGW", flightNum: "TR677", aircraft: "A320" }] },
+                        { dest: "HKG", realMin: 170, airlines: [{ name: "香港エクスプレス", code: "HKE", flightNum: "UO753", aircraft: "A320neo" }] },
+                        { dest: "TPE", realMin: 220, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR258", aircraft: "A321" }] }
+                    ]}
+                ],
+                KUL: [
+                    { limit: 120, dests: [
+                        { dest: "SIN", realMin: 60, airlines: [{ name: "マレーシア航空", code: "MAS", flightNum: "MH611", aircraft: "B737-800" }] },
+                        { dest: "PEN", realMin: 55, airlines: [{ name: "エアアジア", code: "AXM", flightNum: "AK6112", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 360, airlines: [{ name: "マレーシア航空", code: "MAS", flightNum: "MH88", aircraft: "A350-900" }] },
+                        { dest: "TPE", realMin: 285, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR228", aircraft: "B777-300ER" }] },
+                        { dest: "SIN", realMin: 60, airlines: [{ name: "マレーシア航空", code: "MAS", flightNum: "MH613", aircraft: "B737-800" }] }
+                    ]}
+                ],
+                PEN: [
+                    { limit: 120, dests: [
+                        { dest: "KUL", realMin: 55, airlines: [{ name: "マレーシア航空", code: "MAS", flightNum: "MH1145", aircraft: "B737-800" }, { name: "マレーシア航空", code: "MAS", flightNum: "MH1155", aircraft: "B737-800" }] },
+                        { dest: "SIN", realMin: 85, airlines: [{ name: "スクート", code: "TGW", flightNum: "TR427", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "HKG", realMin: 235, airlines: [{ name: "キャセイパシフィック航空", code: "CPA", flightNum: "CX692", aircraft: "A330-300" }] },
+                        { dest: "BKK", realMin: 105, airlines: [{ name: "タイ・エアアジア", code: "AIQ", flightNum: "FD404", aircraft: "A320" }] },
+                        { dest: "TPE", realMin: 280, airlines: [{ name: "スターラックス航空", code: "SLA", flightNum: "JX722", aircraft: "A321neo" }] }
+                    ]}
+                ],
+                CGK: [
+                    { limit: 120, dests: [
+                        { dest: "SIN", realMin: 110, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ957", aircraft: "B777-300ER" }] },
+                        { dest: "DPS", realMin: 115, airlines: [{ name: "ガルーダ・インドネシア", code: "GIA", flightNum: "GA404", aircraft: "A330-300" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 360, airlines: [{ name: "ガルーダ・インドネシア", code: "GIA", flightNum: "GA874", aircraft: "B777-300ER" }] },
+                        { dest: "HKG", realMin: 300, airlines: [{ name: "キャセイパシフィック", code: "CPA", flightNum: "CX776", aircraft: "A350-900" }] },
+                        { dest: "SIN", realMin: 110, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ951", aircraft: "B777-300ER" }] }
+                    ]}
+                ],
+                DPS: [
+                    { limit: 120, dests: [
+                        { dest: "CGK", realMin: 115, airlines: [{ name: "ガルーダ・インドネシア", code: "GIA", flightNum: "GA407", aircraft: "B777-300ER" }, { name: "インドネシア・エアアジア", code: "AWQ", flightNum: "QZ7511", aircraft: "A320" }] },
+                        { dest: "SIN", realMin: 160, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ939", aircraft: "B787-10" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "SYD", realMin: 360, airlines: [{ name: "カンタス航空", code: "QFA", flightNum: "QF44", aircraft: "B737-800" }] },
+                        { dest: "SIN", realMin: 165, airlines: [{ name: "スクート", code: "TGW", flightNum: "TR289", aircraft: "A320" }] },
+                        { dest: "MEL", realMin: 350, airlines: [{ name: "ジェットスター航空", code: "JST", flightNum: "JQ44", aircraft: "B787-8" }] }
+                    ]}
+                ],
+                MNL: [
+                    { limit: 120, dests: [
+                        { dest: "CEB", realMin: 85, airlines: [{ name: "セブパシフィック航空", code: "CEB", flightNum: "5J561", aircraft: "A321neo" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 260, airlines: [{ name: "フィリピン航空", code: "PAL", flightNum: "PR428", aircraft: "B777-300ER" }] },
+                        { dest: "SIN", realMin: 220, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ915", aircraft: "B787-10" }, { name: "シンガポール航空", code: "SIA", flightNum: "SQ917", aircraft: "B787-10" }] },
+                        { dest: "ICN", realMin: 250, airlines: [{ name: "アシアナ航空", code: "AAR", flightNum: "OZ702", aircraft: "A330-300" }] }
+                    ]}
+                ],
+                CEB: [
+                    { limit: 120, dests: [
+                        { dest: "MNL", realMin: 85, airlines: [{ name: "フィリピン航空", code: "PAL", flightNum: "PR1842", aircraft: "A321" }, { name: "フィリピン・エアアジア", code: "APG", flightNum: "Z2764", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 285, airlines: [{ name: "フィリピン航空", code: "PAL", flightNum: "PR434", aircraft: "A321" }] },
+                        { dest: "ICN", realMin: 270, airlines: [{ name: "ジンエアー", code: "JNA", flightNum: "LJ026", aircraft: "B777-200ER" }] },
+                        { dest: "SIN", realMin: 230, airlines: [{ name: "スクート", code: "TGW", flightNum: "TR385", aircraft: "A321neo" }] },
+                        { dest: "KIX", realMin: 275, airlines: [{ name: "フィリピン航空", code: "PAL", flightNum: "PR410", aircraft: "A321" }] }
+                    ]}
+                ],
+                DEL: [
+                    { limit: 360, dests: [
+                        { dest: "SIN", realMin: 350, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ403", aircraft: "A350-900" }] },
+                        { dest: "DXB", realMin: 210, airlines: [{ name: "エミレーツ航空", code: "UAE", flightNum: "EK511", aircraft: "B777-300ER" }, { name: "エミレーツ航空", code: "UAE", flightNum: "EK513", aircraft: "B777-300ER" }] },
+                        { dest: "BKK", realMin: 245, airlines: [{ name: "エアインディア", code: "AIC", flightNum: "AI332", aircraft: "A320" }, { name: "タイ国際航空", code: "THA", flightNum: "TG316", aircraft: "B777-200ER" }] }
+                    ]}
+                ],
+                SGN: [
+                    { limit: 120, dests: [
+                        { dest: "DAD", realMin: 80, airlines: [{ name: "ベトナム航空", code: "HVN", flightNum: "VN120", aircraft: "A321" }, { name: "ベトジェットエア", code: "VJC", flightNum: "VJ622", aircraft: "A321" }] },
+                        { dest: "BKK", realMin: 90, airlines: [{ name: "タイ・ベトジェット", code: "VZ971", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 320, airlines: [{ name: "ベトナム航空", code: "HVN", flightNum: "VN300", aircraft: "B787-9" }] },
+                        { dest: "SIN", realMin: 125, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ177", aircraft: "A350-900" }] },
+                        { dest: "TPE", realMin: 210, airlines: [{ name: "エバー航空", code: "EVA", flightNum: "BR392", aircraft: "B777-300ER" }] }
+                    ]}
+                ],
+                DAD: [
+                    { limit: 120, dests: [
+                        { dest: "SGN", realMin: 80, airlines: [{ name: "ベトナム航空", code: "HVN", flightNum: "VN123", aircraft: "A321" }, { name: "ベトナム航空", code: "HVN", flightNum: "VN127", aircraft: "A321" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "NRT", realMin: 300, airlines: [{ name: "ベトナム航空", code: "HVN", flightNum: "VN318", aircraft: "A321" }] },
+                        { dest: "ICN", realMin: 260, airlines: [{ name: "ティーウェイ航空", code: "TWB", flightNum: "TW128", aircraft: "B737-800" }] },
+                        { dest: "BKK", realMin: 100, airlines: [{ name: "タイ・ベトジェットエア", code: "TVJ", flightNum: "VZ961", aircraft: "A320" }] },
+                        { dest: "TPE", realMin: 165, airlines: [{ name: "スターラックス航空", code: "SLA", flightNum: "JX702", aircraft: "A321neo" }] }
+                    ]}
+                ],
+                SYD: [
+                    { limit: 120, dests: [
+                        { dest: "MEL", realMin: 95, airlines: [{ name: "カンタス航空", code: "QFA", flightNum: "QF401", aircraft: "A330-200" }, { name: "ヴァージン・オーストラリア", code: "VOZ", flightNum: "VA826", aircraft: "B737-800" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ232", aircraft: "A380" }] },
+                        { dest: "HND", realMin: 360, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH880", aircraft: "B787-9" }] }
+                    ]}
+                ],
+                MEL: [
+                    { limit: 120, dests: [
+                        { dest: "SYD", realMin: 85, airlines: [{ name: "カンタス航空", code: "QFA", flightNum: "QF422", aircraft: "B737-800" }, { name: "ジェットスター航空", code: "JST", flightNum: "JQ516", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "SIN", realMin: 360, airlines: [{ name: "シンガポール航空", code: "SIA", flightNum: "SQ238", aircraft: "B777-300ER" }] },
+                        { dest: "BKK", realMin: 360, airlines: [{ name: "タイ国際航空", code: "THA", flightNum: "TG466", aircraft: "A350-900" }] },
+                        { dest: "DEL", realMin: 360, airlines: [{ name: "エアインディア", code: "AIC", flightNum: "AI309", aircraft: "B787-8" }] }
+                    ]}
+                ],
+                AMS: [
+                    { limit: 120, dests: [
+                        { dest: "LHR", realMin: 75, airlines: [{ name: "KLMオランダ航空", code: "KLM", flightNum: "KL1007", aircraft: "B737-800" }] },
+                        { dest: "CDG", realMin: 75, airlines: [{ name: "KLMオランダ航空", code: "KLM", flightNum: "KL1227", aircraft: "E190" }] },
+                        { dest: "FRA", realMin: 65, airlines: [{ name: "KLMオランダ航空", code: "KLM", flightNum: "KL1765", aircraft: "B737-700" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "JFK", realMin: 360, airlines: [{ name: "KLMオランダ航空", code: "KLM", flightNum: "KL641", aircraft: "B787-10" }] }
+                    ]}
+                ],
+                ZRH: [
+                    { limit: 120, dests: [
+                        { dest: "LHR", realMin: 105, airlines: [{ name: "スイス航空", code: "SWR", flightNum: "LX318", aircraft: "A321" }] },
+                        { dest: "CDG", realMin: 75, airlines: [{ name: "スイス航空", code: "SWR", flightNum: "LX632", aircraft: "A220" }] }
+                    ]}
+                ],
+                FCO: [
+                    { limit: 120, dests: [
+                        { dest: "MUC", realMin: 95, airlines: [{ name: "ITAエアウェイズ", code: "ITY", flightNum: "AZ436", aircraft: "A320" }] },
+                        { dest: "CDG", realMin: 125, airlines: [{ name: "エールフランス航空", code: "AFR", flightNum: "AF1305", aircraft: "A321" }] },
+                        { dest: "LHR", realMin: 145, airlines: [{ name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA547", aircraft: "A321" }] }
+                    ]}
+                ],
+                MXP: [
+                    { limit: 120, dests: [
+                        { dest: "CDG", realMin: 85, airlines: [{ name: "イージージェット", code: "EZY", flightNum: "U22781", aircraft: "A320" }] },
+                        { dest: "LHR", realMin: 120, airlines: [{ name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA573", aircraft: "A320neo" }] }
+                    ]}
+                ],
+                MAD: [
+                    { limit: 120, dests: [
+                        { dest: "BCN", realMin: 75, airlines: [{ name: "イベリア航空", code: "IBE", flightNum: "IB3014", aircraft: "A320neo" }] },
+                        { dest: "ORY", realMin: 120, airlines: [{ name: "イベリア航空", code: "IBE", flightNum: "IB3436", aircraft: "A321" }] },
+                        { dest: "LHR", realMin: 145, airlines: [{ name: "ブリティッシュ・エアウェイズ", code: "BAW", flightNum: "BA461", aircraft: "A320" }] }
+                    ]}
+                ],
+                BCN: [
+                    { limit: 120, dests: [
+                        { dest: "MAD", realMin: 80, airlines: [{ name: "ブエリング航空", code: "VLG", flightNum: "VY1002", aircraft: "A320" }] },
+                        { dest: "CDG", realMin: 105, airlines: [{ name: "イージージェット", code: "EZY", flightNum: "U22782", aircraft: "A320" }] }
+                    ]}
+                ],
+                CPH: [
+                    { limit: 120, dests: [
+                        { dest: "AMS", realMin: 85, airlines: [{ name: "スカンジナビア航空", code: "SAS", flightNum: "SK547", aircraft: "A320neo" }] },
+                        { dest: "FRA", realMin: 85, airlines: [{ name: "スカンジナビア航空", code: "SAS", flightNum: "SK639", aircraft: "A320neo" }] }
+                    ]}
+                ],
+                HEL: [
+                    { limit: 90, dests: [
+                        { dest: "CPH", realMin: 100, airlines: [{ name: "スカンジナビア航空", code: "SAS", flightNum: "SK1715", aircraft: "A320neo" }] }
+                    ]},
+                    { limit: 120, dests: [
+                        { dest: "CPH", realMin: 100, airlines: [{ name: "フィンエアー", code: "FIN", flightNum: "AY951", aircraft: "A321" }] },
+                        { dest: "AMS", realMin: 150, airlines: [{ name: "フィンエアー", code: "FIN", flightNum: "AY1301", aircraft: "A321" }] },
+                        { dest: "LHR", realMin: 185, airlines: [{ name: "フィンエアー", code: "FIN", flightNum: "AY1331", aircraft: "A350-900" }] },
+                        { dest: "CDG", realMin: 180, airlines: [{ name: "エールフランス航空", code: "AFR", flightNum: "AF1071", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "JFK", realMin: 360, airlines: [{ name: "フィンエアー", code: "FIN", flightNum: "AY015", aircraft: "A350-900" }] }
+                    ]}
+                ],
+                IST: [
+                    { limit: 120, dests: [
+                        { dest: "FCO", realMin: 160, airlines: [{ name: "ターキッシュエアラインズ", code: "THY", flightNum: "TK1865", aircraft: "A321" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "LHR", realMin: 245, airlines: [{ name: "ターキッシュエアラインズ", code: "THY", flightNum: "TK1985", aircraft: "A330-300" }] },
+                        { dest: "DXB", realMin: 260, airlines: [{ name: "ターキッシュエアラインズ", code: "THY", flightNum: "TK762", aircraft: "A350-900" }] }
+                    ]}
+                ],
+                AUH: [
+                    { limit: 120, dests: [
+                        { dest: "DOH", realMin: 70, airlines: [{ name: "エティハド航空", code: "ETD", flightNum: "EY393", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "LHR", realMin: 360, airlines: [{ name: "エティハド航空", code: "ETD", flightNum: "EY19", aircraft: "B787-9" }] },
+                        { dest: "CDG", realMin: 360, airlines: [{ name: "エティハド航空", code: "ETD", flightNum: "EY31", aircraft: "B787-9" }] }
+                    ]}
+                ],
+                DOH: [
+                    { limit: 120, dests: [
+                        { dest: "DXB", realMin: 70, airlines: [{ name: "カタール航空", code: "QTR", flightNum: "QR1018", aircraft: "B777-300ER" }] },
+                        { dest: "AUH", realMin: 70, airlines: [{ name: "カタール航空", code: "QTR", flightNum: "QR1054", aircraft: "A320" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "LHR", realMin: 360, airlines: [{ name: "カタール航空", code: "QTR", flightNum: "QR7", aircraft: "A380" }] },
+                        { dest: "CDG", realMin: 360, airlines: [{ name: "カタール航空", code: "QTR", flightNum: "QR39", aircraft: "B787-9" }] }
+                    ]}
+                ],
+                CAI: [
+                    { limit: 120, dests: [
+                        { dest: "DXB", realMin: 210, airlines: [{ name: "エジプト航空", code: "MSR", flightNum: "MS912", aircraft: "B737-800" }] },
+                        { dest: "IST", realMin: 135, airlines: [{ name: "ターキッシュエアラインズ", code: "THY", flightNum: "TK691", aircraft: "A321" }] }
+                    ]}
+                ],
+                EWR: [
+                    { limit: 120, dests: [
+                        { dest: "ORD", realMin: 150, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1205", aircraft: "B737-900" }] },
+                        { dest: "BOS", realMin: 75, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2412", aircraft: "B737-800" }] }
+                    ]}
+                ],
+                LGA: [
+                    { limit: 120, dests: [
+                        { dest: "ORD", realMin: 155, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA312", aircraft: "B737-800" }] },
+                        { dest: "BOS", realMin: 75, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL5689", aircraft: "E175" }] }
+                    ]}
+                ],
+                SFO: [
+                    { limit: 120, dests: [
+                        { dest: "LAX", realMin: 90, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2045", aircraft: "B737-900" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "JFK", realMin: 345, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA531", aircraft: "B757-200" }] },
+                        { dest: "ORD", realMin: 255, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA431", aircraft: "B777-200" }] },
+                        { dest: "HND", realMin: 360, airlines: [{ name: "全日本空輸", code: "ANA", flightNum: "NH107", aircraft: "B777-300ER" }] }
+                    ]}
+                ],
+                ORD: [
+                    { limit: 120, dests: [
+                        { dest: "LGA", realMin: 130, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA1201", aircraft: "B737-800" }] },
+                        { dest: "EWR", realMin: 125, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2354", aircraft: "B737-900" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "LAX", realMin: 260, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1214", aircraft: "B737-900" }] },
+                        { dest: "SFO", realMin: 275, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2314", aircraft: "B737-800" }] }
+                    ]}
+                ],
+                DFW: [
+                    { limit: 120, dests: [
+                        { dest: "ORD", realMin: 145, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2355", aircraft: "B737-800" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "LAX", realMin: 195, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2411", aircraft: "B787-8" }] },
+                        { dest: "JFK", realMin: 210, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA1402", aircraft: "B737-800" }] }
+                    ]}
+                ],
+                ATL: [
+                    { limit: 120, dests: [
+                        { dest: "MIA", realMin: 115, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL1123", aircraft: "B757-200" }] },
+                        { dest: "ORD", realMin: 120, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL2344", aircraft: "B737-900" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "LAX", realMin: 290, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL324", aircraft: "B767-300ER" }] },
+                        { dest: "JFK", realMin: 145, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL2014", aircraft: "B737-900" }] }
+                    ]}
+                ],
+                MIA: [
+                    { limit: 120, dests: [
+                        { dest: "ATL", realMin: 115, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2114", aircraft: "B737-800" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "JFK", realMin: 185, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA2445", aircraft: "B777-200ER" }] },
+                        { dest: "ORD", realMin: 190, airlines: [{ name: "アメリカン航空", code: "AAL", flightNum: "AA1204", aircraft: "B737-800" }] }
+                    ]}
+                ],
+                SEA: [
+                    { limit: 120, dests: [
+                        { dest: "YVR", realMin: 55, airlines: [{ name: "アラスカ航空", code: "ASA", flightNum: "AS2414", aircraft: "E175" }] },
+                        { dest: "SFO", realMin: 130, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL4104", aircraft: "B737-800" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "LAX", realMin: 165, airlines: [{ name: "アラスカ航空", code: "ASA", flightNum: "AS1120", aircraft: "B737-900" }] },
+                        { dest: "ORD", realMin: 245, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2411", aircraft: "B737-900" }] }
+                    ]}
+                ],
+                IAH: [
+                    { limit: 120, dests: [
+                        { dest: "DFW", realMin: 70, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA4312", aircraft: "ERJ-145" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "LGA", realMin: 210, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1140", aircraft: "B737-900" }] },
+                        { dest: "LAX", realMin: 215, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2145", aircraft: "B737-900" }] }
+                    ]}
+                ],
+                DEN: [
+                    { limit: 120, dests: [
+                        { dest: "ORD", realMin: 145, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1102", aircraft: "B737-900" }] },
+                        { dest: "SFO", realMin: 155, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1244", aircraft: "B737-800" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "LAX", realMin: 145, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2310", aircraft: "B737-900" }] },
+                        { dest: "JFK", realMin: 235, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA2414", aircraft: "B737-900" }] }
+                    ]}
+                ],
+                BOS: [
+                    { limit: 120, dests: [
+                        { dest: "JFK", realMin: 75, airlines: [{ name: "ジェットブルー", code: "JBU", flightNum: "B6301", aircraft: "A320" }] },
+                        { dest: "LGA", realMin: 75, airlines: [{ name: "デルタ航空", code: "DAL", flightNum: "DL5678", aircraft: "E175" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "LAX", realMin: 360, airlines: [{ name: "ユナイテッド航空", code: "UAL", flightNum: "UA1201", aircraft: "B737-900" }] }
+                    ]}
+                ],
+                YVR: [
+                    { limit: 120, dests: [
+                        { dest: "SEA", realMin: 55, airlines: [{ name: "エア・カナダ", code: "ACA", flightNum: "AC8091", aircraft: "DH8D" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "LAX", realMin: 180, airlines: [{ name: "エア・カナダ", code: "ACA", flightNum: "AC554", aircraft: "A220-300" }] },
+                        { dest: "JFK", realMin: 315, airlines: [{ name: "ジェットブルー", code: "JBU", flightNum: "B62301", aircraft: "A320" }] }
+                    ]}
+                ],
+                RJT: [
+                    { limit: 120, dests: [
+                        { dest: "NKM", realMin: 50, airlines: [{ name: "航空自衛隊", code: "JSF", flightNum: "COSMO 01", aircraft: "C-1" }, { name: "航空自衛隊", code: "JSF", flightNum: "COSMO 11", aircraft: "C-2" }] },
+                        { dest: "YGJ", realMin: 80, airlines: [{ name: "航空自衛隊", code: "JSF", flightNum: "MESSENGER 31", aircraft: "C-2" }] }
+                    ]}
+                ],
+                NKM: [
+                    { limit: 120, dests: [
+                        { dest: "RJT", realMin: 50, airlines: [{ name: "航空自衛隊", code: "JSF", flightNum: "COSMO 02", aircraft: "C-130H" }] },
+                        { dest: "YGJ", realMin: 65, airlines: [{ name: "航空自衛隊", code: "JSF", flightNum: "COSMO 12", aircraft: "C-2" }] }
+                    ]}
+                ],
+                YGJ: [
+                    { limit: 120, dests: [
+                        { dest: "RJT", realMin: 80, airlines: [{ name: "航空自衛隊", code: "JSF", flightNum: "MESSENGER 32", aircraft: "C-2" }] }
+                    ]}
+                ],
+                CVN73: [
+                    { limit: 120, dests: [
+                        { dest: "RJTA", realMin: 45, airlines: [{ name: "米海軍第5空母航空団", code: "USN", flightNum: "TALON 11", aircraft: "MH-60R" }, { name: "米海軍第5空母航空団", code: "USN", flightNum: "SABER 21", aircraft: "MH-60S" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "RJOI", realMin: 70, airlines: [{ name: "米海軍第5空母航空団", code: "USN", flightNum: "CHIPPY 01", aircraft: "F/A-18" }, { name: "米海軍第5空母航空団", code: "USN", flightNum: "MACE 33", aircraft: "F-35C" }, { name: "米海軍第5空母航空団", code: "USN", flightNum: "OUTLAW 61", aircraft: "EA-18G" }, { name: "米海軍第5空母航空団", code: "USN", flightNum: "LIBERTY 02", aircraft: "E-2D" }] }
+                    ]}
+                ],
+                LHA7: [
+                    { limit: 120, dests: [
+                        { dest: "ROTM", realMin: 90, airlines: [{ name: "米海兵隊第31海兵遠征部隊", code: "USM", flightNum: "DRAGON 01", aircraft: "MV-22" }] },
+                        { dest: "RJTA", realMin: 55, airlines: [{ name: "米海軍第51海上戦闘ヘリコプター飛行隊", code: "USN", flightNum: "NINJA 01", aircraft: "MH-60S" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "RJOI", realMin: 80, airlines: [{ name: "米海兵隊第31海兵遠征部隊", code: "USM", flightNum: "BAT 51", aircraft: "F-35B" }, { name: "米海兵隊第12海兵航空群", code: "USM", flightNum: "SUMO 41", aircraft: "KC-130J" }] },
+                        { dest: "ROTM", realMin: 95, airlines: [{ name: "米海兵隊第36海兵航空群", code: "USM", flightNum: "CORSAIR 22", aircraft: "MV-22B" }] }
+                    ]}
+                ],
+                ROTM: [
+                    { limit: 120, dests: [
+                        { dest: "LHA7", realMin: 90, airlines: [{ name: "米海兵隊第31海兵遠征部隊", code: "USM", flightNum: "DRAGON 02", aircraft: "MV-22" }] }
+                    ]},
+                    { limit: 360, dests: [
+                        { dest: "RJOI", realMin: 100, airlines: [{ name: "米海兵隊", code: "USM", flightNum: "SUMO 91", aircraft: "C-130H" }] }
+                    ]}
+                ]
+            },
 
+            // 空港ごとの進入特徴プロファイル
+            ARRIVAL_PROFILES: {
+                HND: { pattern: "boso_left_turn" },
+                LHR: { pattern: "holding_stack" },
+                JFK: { pattern: "canarsie_curve" },
+                SIN: { pattern: "downwind_u_turn" },
+                ITM: { pattern: "yodogawa_straight" }
+            }
+        }; 
+
+
+
+    </script>
+
+
+
+    <!-- =========================================================================
+         / 【データ層】終わり
+         ========================================================================= -->
+
+
+    <!-- =========================================================================
+         【ロジック層】APPLICATION LOGIC SECTION (将来的に app.js へ完全切り出し可能)
+         ========================================================================= -->
+    <script id="app-logic">
         // 安全かつ多彩な自動提案ルーティング計算
         function getOptimalFlightRoute(origin, chosenMinutes) {
-            let routesList = FLIGHT_ROUTING_DATABASE[origin];
+            let routesList = window.FLIGHT_DATA.FLIGHT_ROUTING_DATABASE[origin];
             if (!routesList) {
-                routesList = FLIGHT_ROUTING_DATABASE["HND"];
+                routesList = window.FLIGHT_DATA.FLIGHT_ROUTING_DATABASE["HND"];
             }
 
             let matchingCategory = routesList[0];
@@ -1230,7 +1457,7 @@
             let availableDests = matchingCategory.dests.filter(d => d.dest !== origin);
             
             if (availableDests.length === 0) {
-                const backupList = FLIGHT_ROUTING_DATABASE["HND"];
+                const backupList = window.FLIGHT_DATA.FLIGHT_ROUTING_DATABASE["HND"];
                 const backupCategory = backupList[backupList.length - 1];
                 availableDests = backupCategory.dests.filter(d => d.dest !== origin);
             }
@@ -1250,7 +1477,7 @@
         }
 
 
-        // --- 2. キャビンオーディオ環境音響システム (Web Audio API) ---
+        // --- キャビンオーディオ環境音響システム (Web Audio API) ---
         let audioCtx = null;
         let jetNoiseSource = null;
         let jetNoiseFilter = null;
@@ -1373,7 +1600,7 @@
         }
 
 
-        // --- 3. アプリ状態変数 ---
+        // --- アプリ状態変数 ---
         const state = {
             isPlaying: false,
             isPaused: false,
@@ -1399,7 +1626,7 @@
         };
 
 
-        // --- 4. 空港特性に応じた超リアル進入経路(アプローチ・STAR・Hold)動的生成システム ---
+        // --- 空港特性に応じた超リアル進入経路(アプローチ・STAR・Hold)動的生成システム ---
         // 緯度経度の基礎大圏航路の補間
         function calculateGreatCirclePoints(orig, dest, steps = 150) {
             const points = [];
@@ -1432,15 +1659,6 @@
             return points;
         }
 
-        // 空港ごとに進入特徴プロファイルを定義
-        const ARRIVAL_PROFILES = {
-            HND: { pattern: "boso_left_turn" },
-            LHR: { pattern: "holding_stack" },
-            JFK: { pattern: "canarsie_curve" },
-            SIN: { pattern: "downwind_u_turn" },
-            ITM: { pattern: "yodogawa_straight" }
-        };
-
         // アプローチ（75%〜100%ステップ）を空港固有アルゴリズムで統合構築
         function buildRealisticStarRoute(orig, dest) {
             const totalSteps = 1000;
@@ -1462,7 +1680,7 @@
             const vLat = uLon;
             const vLon = -uLat;
 
-            const profile = ARRIVAL_PROFILES[dest.code] || ARRIVAL_PROFILES[state.dest] || { pattern: "random_star" };
+            const profile = window.FLIGHT_DATA.ARRIVAL_PROFILES[dest.code] || window.FLIGHT_DATA.ARRIVAL_PROFILES[state.dest] || { pattern: "random_star" };
             const pattern = profile.pattern;
 
             let starWps = [];
@@ -1598,7 +1816,7 @@
         }
 
 
-        // --- 5. UI要素の変数宣言 (window.onload 内で確実にバインドします) ---
+        // --- UI要素の変数宣言 ---
         let originSelect, flightDurationInput, flightDurationVal, boardingBtn, plannerOverlay, shuffleBtn;
         let previewOrigin, previewDest, previewRouteDesc;
         let hudHeader, hudFooter, hudAnnouncement, hudProgressTag, seatbeltSign, turbulenceAlert;
@@ -1608,9 +1826,9 @@
         let logbookList, totalMilesText, nonFullscreenFooter;
         let customModal, modalTitle, modalMessage, modalIcon, modalCloseBtn;
 
-        // --- 6. アプリケーション初期化 ---
+        // --- アプリケーション初期化 ---
         function initApp() {
-            // DOM要素をページの完全読み込み完了後に確実にバインド
+            // DOM要素をバインド
             originSelect = document.getElementById('originAirport');
             flightDurationInput = document.getElementById('flightDuration');
             flightDurationVal = document.getElementById('flightDurationVal');
@@ -1658,9 +1876,9 @@
             modalIcon = document.getElementById('modalIcon');
             modalCloseBtn = document.getElementById('modalCloseBtn');
 
-            // 出発空港のプルダウン構築
+            // 出発空港のプルダウン構築 (グローバル変数 window.FLIGHT_DATA.AIRPORTS 参照)
             let selectHtml = '';
-            for (const [code, info] of Object.entries(AIRPORTS)) {
+            for (const [code, info] of Object.entries(window.FLIGHT_DATA.AIRPORTS)) {
                 selectHtml += `<option value="${code}" ${code === 'HND' ? 'selected' : ''}>${info.name}</option>`;
             }
             if (originSelect) originSelect.innerHTML = selectHtml;
@@ -1758,7 +1976,7 @@
                 audioCtx.resume();
             }
 
-            // 【完全同期設計】搭乗手続きが開始された瞬間にデータを確実に一貫させ、undefined例外を根絶
+            // 搭乗手続き開始時のデータ安全同期
             const chosenOrigin = originSelect ? originSelect.value : "HND";
             const chosenMinutes = flightDurationInput ? parseInt(flightDurationInput.value, 10) : 25;
             
@@ -1767,8 +1985,8 @@
             state.elapsedSeconds = 0;
 
             if (!state.flightInfo || state.origin !== chosenOrigin) {
-    state.flightInfo = getOptimalFlightRoute(chosenOrigin, chosenMinutes);
-}
+                state.flightInfo = getOptimalFlightRoute(chosenOrigin, chosenMinutes);
+            }
 
             state.dest = state.flightInfo.destCode;
 
@@ -1785,8 +2003,8 @@
             if (airlineNameText) airlineNameText.innerText = state.flightInfo.airlineName;
             if (airlineLogo) airlineLogo.innerText = state.flightInfo.airlineCode;
 
-            const origAp = AIRPORTS[state.origin];
-            const destAp = AIRPORTS[state.dest];
+            const origAp = window.FLIGHT_DATA.AIRPORTS[state.origin];
+            const destAp = window.FLIGHT_DATA.AIRPORTS[state.dest];
             if (originIataText) originIataText.innerText = state.origin;
             if (originCityText) originCityText.innerText = `${origAp.city} (${origAp.country})`;
             if (destIataText) destIataText.innerText = state.dest;
@@ -1855,11 +2073,10 @@
 
             let brng = Math.atan2(y, x);
             brng = brng * 180 / Math.PI;
-            // 0〜360度に正規化
             return (brng + 360) % 360;
         }
 
-        // マーカーのDOM要素を直接安全に回転させる（例外を絶対に生み出さないノーエラー構造）
+        // マーカーのDOM要素を直接安全に回転させる
         function updatePlaneMarkerIcon(bearing) {
             if (!state.planeMarker) return;
             try {
@@ -1882,8 +2099,8 @@
             state.waypointMarkers.forEach(marker => state.map.removeLayer(marker));
             state.waypointMarkers = [];
 
-            const orig = AIRPORTS[state.origin];
-            const dest = AIRPORTS[state.dest];
+            const orig = window.FLIGHT_DATA.AIRPORTS[state.origin];
+            const dest = window.FLIGHT_DATA.AIRPORTS[state.dest];
 
             const oIcon = L.divIcon({
                 html: `<div class="flex flex-col items-center"><div class="w-4 h-4 bg-sky-600 rounded-full border-2 border-white shadow-lg animate-ping absolute"></div><div class="w-4 h-4 bg-sky-600 rounded-full border-2 border-white shadow-lg relative z-10"></div><span class="text-[9px] font-extrabold bg-white border border-slate-200 px-1 py-0.5 rounded shadow mt-1 relative z-20">${state.origin}</span></div>`,
@@ -1929,7 +2146,7 @@
                 state.waypointMarkers.push(mYp);
             });
 
-            // 航空機マーカー初期設置 (一度L.divIconを配置したら、以降は要素の中身だけを安全・軽量にDOM回転させることで絶対安全に設計)
+            // 航空機マーカー初期設置
             const aircraftSvg = `
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#0284c7" width="30" height="30" style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.3));">
                     <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L14 19v-5.5l8 2.5z"/>
@@ -2052,10 +2269,10 @@
                 // 進行割合の計算 (安全に0.0〜1.0へ制限)
                 const percent = Math.min(Math.max(state.elapsedSeconds / state.totalSeconds, 0), 1);
 
-                // 【セーフティガード】経路データの存在確認とフェールセーフ
+                // 経路データの存在確認とフェールセーフ
                 if (!state.routeData || !state.routeData.points || state.routeData.points.length === 0) {
-                    const origAp = AIRPORTS[state.origin];
-                    const destAp = AIRPORTS[state.dest];
+                    const origAp = window.FLIGHT_DATA.AIRPORTS[state.origin];
+                    const destAp = window.FLIGHT_DATA.AIRPORTS[state.dest];
                     if (origAp && destAp) {
                         state.routeData = buildRealisticStarRoute(origAp, destAp);
                     }
@@ -2094,10 +2311,7 @@
                 if (hudMiniProgressBar) hudMiniProgressBar.style.width = `${progressPct}%`;
                 if (statusPlaneIcon) statusPlaneIcon.style.left = `${progressPct}%`;
 
-                // ==========================================
                 // 【タキシング前後5分間（300秒）一律ロジック】
-                // 短時間フライトでも破綻しないよう、総時間の最大20%をセーフティ上限に設定
-                // ==========================================
                 const maxTaxiSec = Math.floor(state.totalSeconds * 0.20);
                 const startTaxiSec = Math.min(300, maxTaxiSec);
                 const endTaxiSec = Math.min(300, maxTaxiSec);
@@ -2137,7 +2351,7 @@
 
                     if (flightProgressPct < 25) {
                         // 2. Climb (上昇)
-                        phaseName = isCarrierLaunch ? "Takeoff & Climb / 発艦・上昇中" : "Takeoff & Climb / 上昇中";
+                        phaseName = isCarrierLaunch ? "Takeoff & Climb / 発艦・上昇中" : "Takeoff & Climb / 上上昇中";
                         if (currentPhaseLabel) currentPhaseLabel.innerText = "CLIMB";
                         const ratio = flightProgressPct / 25;
                         alt = Math.floor(ratio * 38000);
@@ -2373,7 +2587,9 @@
         }
 
         window.onload = initApp;
-
     </script>
+    <!-- =========================================================================
+         / 【ロジック層】終わり
+         ========================================================================= -->
 </body>
 </html>
